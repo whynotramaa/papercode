@@ -6,5 +6,10 @@
   ],
   "scripts": {
     "dev:cli": "bun run --watch packages/cli/src/index.tsx"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.3.1",
+    "opentui-spinner": "^0.0.6",
+    "react-dom": "^19.2.7"
   }
 }
