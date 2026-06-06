@@ -1,15 +1,16 @@
 {
   "name": "papercode",
   "version": "1.0.0",
-  "workspaces": [
-    "packages/*"
-  ],
-  "scripts": {
-    "dev:cli": "bun run --watch packages/cli/src/index.tsx"
-  },
   "dependencies": {
     "@opentui/core": "^0.3.1",
     "opentui-spinner": "^0.0.6",
     "react-dom": "^19.2.7"
-  }
+  },
+  "scripts": {
+    "dev:cli": "bun run --watch packages/cli/src/index.tsx",
+    "dev:server": "bun run --hot packages/server/src/index.ts"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }
