@@ -1,7 +1,9 @@
+import "./lib/env";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import sessions from "./routes/sessions";
 import chat from "./routes/chat";
+
 const app = new Hono()
 
 app.onError((error, c) => {

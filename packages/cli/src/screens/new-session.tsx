@@ -9,8 +9,8 @@ import { z } from "zod";
 import { useToast } from "../providers/toast";
 import { useMemo } from "hono/jsx";
 import { apiClient } from "../lib/api-client";
-import { DEFAULT_CHAT_MODEL_ID } from "@papercode/shared";
 import { getErrorMessage } from "../lib/http-errors";
+import { useModel } from "../providers/model";
 
 const newSessionStateSchema = z.object({
   message: z.string(),
@@ -20,6 +20,7 @@ export function NewSession() {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast()
+  const { selectedModel } = useModel()
  const { colors } = useTheme()
   const hasStartedRef = useRef(false);
 
@@ -51,7 +52,7 @@ export function NewSession() {
               role: "USER",
               content: state.message,
               mode: "BUILD",
-              model: DEFAULT_CHAT_MODEL_ID
+              model: selectedModel
             }
           }
         })
@@ -79,7 +80,7 @@ export function NewSession() {
       ignore = true
     }
 
-  }, [state, navigate, toast])
+  }, [state, navigate, toast, selectedModel])
 
   if (!state) {
     return null

@@ -95,7 +95,6 @@ export function DialogSearchList<T>({ items, onSelect, onHighlight, filterFn, re
                 height={1}
                 overflow="hidden"
                 backgroundColor={isSelected ? colors.selection : undefined}
-                color={isSelected ? colors.selectionForeground : undefined}
                 onMouseMove={() =>
                 {
                   setSelectedIndex(index)

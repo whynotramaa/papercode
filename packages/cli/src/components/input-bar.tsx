@@ -14,6 +14,7 @@ import { useTheme } from "../providers/theme";
 type Props = {
   onSubmit: (text: string) => void;
   disabled?: boolean;
+  onBlockedAction?: () => void;
 }
 
 export const TEXTAREA_KEY_BINDINGS: KeyBinding[] = [
@@ -23,7 +24,7 @@ export const TEXTAREA_KEY_BINDINGS: KeyBinding[] = [
   { name: "enter", shift: true, action: "newline" },
 ]
 
-export function InputBar({ onSubmit, disabled }: Props) {
+export function InputBar({ onSubmit, disabled, onBlockedAction }: Props) {
   const textareaRef = useRef<TextareaRenderable>(null);
   const onSubmitRef = useRef<() => void>(() => { });
   const renderer = useRenderer();
@@ -90,7 +91,10 @@ export function InputBar({ onSubmit, disabled }: Props) {
   }, []);
 
   onSubmitRef.current = () => {
-    if (disabled) return;
+    if (disabled) {
+      onBlockedAction?.();
+      return;
+    }
 
     if (showCommandMenu) {
       const command = resolveCommand(selectedIndex);
@@ -138,10 +142,10 @@ export function InputBar({ onSubmit, disabled }: Props) {
           <textarea
             ref={textareaRef}
             width="100%"
-            focused={!disabled && (isTopLayer("base") || isTopLayer("command"))}
+            focused={isTopLayer("base") || isTopLayer("command")}
             keyBindings={TEXTAREA_KEY_BINDINGS}
             onContentChange={handleTextAreaContentChange}
-            placeholder={`Ask anything ... "Fix the bug in the database"`}
+            placeholder={`Ask anything...`}
           />
           <StatusBar />
         </box>

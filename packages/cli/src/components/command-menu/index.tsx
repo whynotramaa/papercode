@@ -5,7 +5,6 @@ import { getFilteredCommands } from "./filter-command";
 import { useTheme } from "../../providers/theme";
 
 const MAX_VISIBLE_ITEMS = 8;
-
 const COMMAND_COL_WIDTH = Math.max(...COMMANDS.map((cmd) => cmd.name.length)) + 4;
 
 type CommandMenuProps = {

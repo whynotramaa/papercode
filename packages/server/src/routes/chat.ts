@@ -1,7 +1,7 @@
 import { db, MessageStatus, Mode } from "@papercode/database";
 import z from "zod";
 import { streamText as aiStreamText } from "ai";
-import { isSupportedChatModel, resolveChatModel } from "../lib/models";
+import { isSupportedChatModel, resolveChatModel, type ProviderCredentials } from "../lib/models";
 import { zValidator } from "@hono/zod-validator";
 import { streamSSE } from "hono/streaming";
 import type { ChatStreamEvent } from "@papercode/shared";
@@ -41,20 +41,21 @@ type StreamParams = {
   model: string;
   history: { role: "user" | "assistant"; content: string }[]
   abortController: AbortController;
+  credentials?: ProviderCredentials;
 }
 
 async function streamAIResponse(
   stream: Parameters<Parameters<typeof streamSSE>[1]>[0],
   params: StreamParams,
 ) {
-  const { sessionId, mode, model, history, abortController } = params;
+  const { sessionId, mode, model, history, abortController, credentials } = params;
   const startTime = Date.now();
-  const resolvedModel = resolveChatModel(model)
+  const resolvedModel = resolveChatModel(model, credentials)
   let fullText = ""
 
   try {
     const result = aiStreamText({
-      model: resolvedModel,
+      model: resolvedModel.model,
       messages: history,
       abortSignal: abortController.signal,
     })
@@ -75,21 +76,21 @@ async function streamAIResponse(
       if (stream.aborted || abortController.signal.aborted) {
         return
       }
-
-      const elapsedMs = Date.now() - startTime
-
-      const assistantMessage = await db.message.create({
-        data: {
-          sessionId,
-          role: "ASSISTANT",
-          content: fullText,
-          status: MessageStatus.COMPLETE,
-          model,
-          mode,
-          duration: Math.round(elapsedMs/1000),
-        },
-      })
     }
+
+    const elapsedMs = Date.now() - startTime
+
+    const assistantMessage = await db.message.create({
+      data: {
+        sessionId,
+        role: "ASSISTANT",
+        content: fullText,
+        status: MessageStatus.COMPLETE,
+        model,
+        mode,
+        duration: Math.round(elapsedMs / 1000),
+      },
+    })
 
     const doneEvent: ChatStreamEvent = {
       type: "done", messageId: assistantMessage.id, durationMs: elapsedMs
@@ -138,6 +139,11 @@ const app = new Hono()
       ...session.messages,
     ])
 
+    const credentials: ProviderCredentials = {
+      apiKey: c.req.header("x-provider-api-key"),
+      baseUrl: c.req.header("x-provider-base-url"),
+    }
+
     const abortController = new AbortController()
 
     return streamSSE(
@@ -148,9 +154,14 @@ const app = new Hono()
         })
 
         await streamAIResponse(stream, {
-          sessionId, model:lastMessage.model, history, mode: lastMessage.mode, abortController
+          sessionId, model:lastMessage.model, history, mode: lastMessage.mode, abortController, credentials
         })
-      },c
+      },
+      async (err, stream) => {
+        const msg = err instanceof Error ? err.message : String(err)
+        const errorEvent: ChatStreamEvent = { type: "error", message: msg }
+        await stream.writeSSE({ event: "error", data: JSON.stringify(errorEvent) })
+      },
     )
   })
   .post("/:sessionId", submitValidator, async (c) => {
@@ -163,6 +174,10 @@ const app = new Hono()
   }
 
   const data = c.req.valid("json")
+  const credentials: ProviderCredentials = {
+    apiKey: c.req.header("x-provider-api-key"),
+    baseUrl: c.req.header("x-provider-base-url"),
+  }
 
   await db.message.create({
     data: {
@@ -194,7 +209,7 @@ const app = new Hono()
       })
 
       await streamAIResponse(stream, {
-        sessionId, model: data.model, history, mode: data.mode, abortController
+        sessionId, model: data.model, history, mode: data.mode, abortController, credentials
       })
     },
     async (err, stream) => {

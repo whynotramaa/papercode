@@ -1,4 +1,6 @@
 import { ThemeDialogContent } from "../dialogs/theme-dialog";
+import { ModelDialogContent } from "../dialogs/model-dialog";
+import { ProviderSetupDialogContent, LogoutDialogContent } from "../dialogs/provider-setup-dialog";
 import type { Command } from "./types";
 
 export const COMMANDS: Command[] = [
@@ -36,24 +38,30 @@ export const COMMANDS: Command[] = [
     action: (ctx) => {
       ctx.dialog.open({
         title: "Select AI model for your task",
-        children: <text> Model selection coming soon ... </text> ,
+        children: <ModelDialogContent /> ,
       })
     },
   },
   {
     name: "login",
-    description: "Sign in to your account",
+    description: "Configure an AI provider and API key",
     value: "/login",
     action: (ctx) => {
-      ctx.toast.show({message: "Login successful"});
+      ctx.dialog.open({
+        title: "Configure AI Provider",
+        children: <ProviderSetupDialogContent />,
+      });
     },
   },
   {
     name: "logout",
-    description: "Sign out of your account",
+    description: "Remove a configured AI provider",
     value: "/logout",
     action: (ctx) => {
-      ctx.toast.show({message: "Logout successful"});
+      ctx.dialog.open({
+        title: "Remove Provider",
+        children: <LogoutDialogContent />,
+      });
     },
   },
   {
@@ -65,14 +73,6 @@ export const COMMANDS: Command[] = [
         title: "Select UI theme",
         children: <ThemeDialogContent />,
       })
-    },
-  },
-  {
-    name: "keybindings",
-    description: "View and edit keyboard shortcuts",
-    value: "/keybindings",
-    action: (ctx) => {
-      ctx.toast.show({message: "Keybindings loaded"});
     },
   },
   {
