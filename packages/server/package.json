@@ -9,9 +9,12 @@
     "dev": "bun run --hot src/index.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.80",
     "@hono/zod-validator": "^0.8.0",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
     "@papercode/database": "workspace:*",
     "@papercode/shared": "workspace:*",
+    "ai": "^6.0.197",
     "dotenv": "^17.4.2",
     "hono": "^4.12.23",
     "zod": "^4.4.3"
