@@ -7,6 +7,7 @@ import { z } from "zod";
 import { UserMessage } from "../components/message/user-message";
 import { ErrorMessage } from "../components/message/error-message";
 import { BotMessage } from "../components/message/bot-message";
+import { ThinkingBlock } from "../components/message/thinking-block";
 import { useToast } from "../providers/toast";
 import { useNavigate } from "react-router";
 import { useLocation } from "react-router";
@@ -122,6 +123,8 @@ export function Session() {
   const [thinkingDone, setThinkingDone] = useState(false)
   const [thinkingElapsedS, setThinkingElapsedS] = useState(0)
   const thinkingStartRef = useRef<number | null>(null)
+  const thinkingContentRef = useRef("")
+  const [completedThinking, setCompletedThinking] = useState<{ content: string; elapsedS: number } | null>(null)
   const [mode, setMode] = useState<AppMode>("BUILD")
   const abortRef = useRef<AbortController | null>(null)
   const hasAutoStartedRef = useRef(false)
@@ -283,6 +286,7 @@ export function Session() {
     setThinkingDone(false)
     setThinkingElapsedS(0)
     thinkingStartRef.current = null
+    thinkingContentRef.current = ""
 
     try {
       const apiUrl = process.env.API_URL ?? "http://localhost:3000"
@@ -327,7 +331,8 @@ export function Session() {
 
         if (event.type === "reasoning-delta") {
           if (!thinkingStartRef.current) thinkingStartRef.current = Date.now()
-          setStreamingThinking(prev => prev + event.text)
+          thinkingContentRef.current += event.text
+          setStreamingThinking(thinkingContentRef.current)
         }
 
         if (event.type === "text-delta") {
@@ -375,6 +380,12 @@ export function Session() {
           if (res.ok) {
             setSession(await res.json())
           }
+          if (thinkingContentRef.current) {
+            const elapsedS = thinkingStartRef.current
+              ? Math.round((Date.now() - thinkingStartRef.current) / 1000)
+              : 0
+            setCompletedThinking({ content: thinkingContentRef.current, elapsedS })
+          }
           setPendingUserMessage(null)
           setStreamingText("")
           setToolCalls(new Map())
@@ -382,6 +393,7 @@ export function Session() {
           setThinkingDone(false)
           setThinkingElapsedS(0)
           thinkingStartRef.current = null
+          thinkingContentRef.current = ""
         }
 
         if (event.type === "compaction-start") {
@@ -476,6 +488,13 @@ export function Session() {
           <CompactionBar messageCount={compactionInfo.messageCount} reason={compactionInfo.reason} />
         )}
         {showCompacted && <CompactionSummary />}
+        {completedThinking && !isStreaming && (
+          <ThinkingBlock
+            content={completedThinking.content}
+            isDone={true}
+            elapsedS={completedThinking.elapsedS}
+          />
+        )}
         {(streamingText || toolCalls.size > 0 || streamingThinking) && (
           <BotMessage
             content={streamingText}
