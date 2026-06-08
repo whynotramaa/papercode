@@ -1,0 +1,7 @@
+[
+  {
+    "name": "review",
+    "description": "reviews the entire codebase",
+    "prompt": "---name: code-review-skilldescription: |  Provides comprehensive code review guidance for React 19, Vue 3, Angular 17+, Svelte 5, Rust, TypeScript, Java, PHP, Python, Django, Go, C#/.NET, Kotlin, Swift, NestJS, C/C++, and more.  Helps catch bugs, improve code quality, and give constructive feedback.  Use when: reviewing pull requests, conducting PR reviews, code review, reviewing code changes,  establishing review standards, mentoring developers, architecture reviews, security audits,  checking code quality, finding bugs, giving feedback on code.allowed-tools:  - Read  - Grep  - Glob  - Bash      # 运行 lint/test/build 命令验证代码质量  - WebFetch  # 查阅最新文档和最佳实践---# Code Review SkillTransform code reviews from gatekeeping to knowledge sharing through constructive feedback, systematic analysis, and collaborative improvement.## When to Use This Skill- Reviewing pull requests and code changes- Establishing code review standards for teams- Mentoring junior developers through reviews- Conducting arch"
+  }
+]

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TextAttributes } from "@opentui/core";
+
 import { useTheme } from "../providers/theme";
 
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -28,7 +28,7 @@ export function LoadingBar() {
   return (
     <box flexDirection="row" alignItems="center" gap={1}>
       <text fg={colors.primary}>{FRAMES[frame]}</text>
-      <text fg={colors.primary} attributes={TextAttributes.DIM}>Thinking{dotsStr}</text>
+      <text fg={colors.dim}>Thinking{dotsStr}</text>
     </box>
   );
 }

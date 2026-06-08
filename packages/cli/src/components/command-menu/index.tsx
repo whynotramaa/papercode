@@ -1,11 +1,10 @@
-import { TextAttributes, type ScrollBoxRenderable } from "@opentui/core";
-import { COMMANDS } from "./commands";
+import { type ScrollBoxRenderable } from "@opentui/core";
 import type { RefObject } from "react";
+import type { Command } from "./types";
 import { getFilteredCommands } from "./filter-command";
 import { useTheme } from "../../providers/theme";
 
 const MAX_VISIBLE_ITEMS = 8;
-const COMMAND_COL_WIDTH = Math.max(...COMMANDS.map((cmd) => cmd.name.length)) + 4;
 
 type CommandMenuProps = {
   query: string;
@@ -13,23 +12,24 @@ type CommandMenuProps = {
   scrollRef: RefObject<ScrollBoxRenderable | null>;
   onSelect: (index: number) => void;
   onExecute: (index: number) => void;
+  skillCommands?: Command[];
 }
 
-export function CommandMenu({ query, selectedIndex, scrollRef, onSelect, onExecute }: CommandMenuProps) {
+export function CommandMenu({ query, selectedIndex, scrollRef, onSelect, onExecute, skillCommands = [] }: CommandMenuProps) {
   const {colors} = useTheme()
-  const filtered = getFilteredCommands(query)
+  const filtered = getFilteredCommands(query, skillCommands)
   const visibleHeight = Math.min(filtered.length, MAX_VISIBLE_ITEMS)
+  const colWidth = filtered.length > 0
+    ? Math.max(...filtered.map(cmd => cmd.name.length + (cmd.isSkill ? 2 : 0))) + 4
+    : 12
 
   if (filtered.length === 0) {
     return (
       <box paddingX={1}>
-        <text attributes={TextAttributes.DIM}>
-          No commands found
-        </text>
+        <text fg={colors.dim}>No commands found</text>
       </box>
     )
-  };
-
+  }
 
   return (
     <scrollbox
@@ -42,6 +42,8 @@ export function CommandMenu({ query, selectedIndex, scrollRef, onSelect, onExecu
     >
       {filtered.map((cmd, i) => {
         const isSelected = i === selectedIndex;
+        const nameColor = isSelected ? colors.selectionForeground : (cmd.isSkill ? colors.primary : colors.foreground)
+        const descColor = isSelected ? colors.selectionForeground : colors.dim
         return (
           <box
             key={cmd.value}
@@ -52,13 +54,13 @@ export function CommandMenu({ query, selectedIndex, scrollRef, onSelect, onExecu
             onMouseMove={() => onSelect(i)}
             onMouseDown={() => onExecute(i)}
           >
-            <box width={COMMAND_COL_WIDTH} flexShrink={0}>
-              <text selectable={false} fg={isSelected ? "black" : "white"}>
-                /{cmd.name}
+            <box width={colWidth} flexShrink={0}>
+              <text selectable={false} fg={nameColor}>
+                {cmd.isSkill ? `⚡ /${cmd.name}` : `/${cmd.name}`}
               </text>
             </box>
             <box flexGrow={1} flexShrink={1} overflow="hidden">
-              <text selectable={false} fg={isSelected ? "black" : "gray"}>
+              <text selectable={false} fg={descColor}>
                 {cmd.description}
               </text>
             </box>

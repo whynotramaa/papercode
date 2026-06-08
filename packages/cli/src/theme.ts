@@ -12,6 +12,9 @@ export type ThemeColors = {
   dialogSurface: string
   thinkingBorder: string
   dimSeperator: string
+  foreground: string
+  dim: string
+  secondaryForeground: string
 }
 
 
@@ -37,6 +40,9 @@ export const THEMES: Theme[] = [
       info:                '#86e1fc',
       thinkingBorder:      '#c099ff',
       dimSeperator:        '#3b4a5a',
+      foreground:          '#c5cdd9',
+      dim:                 '#7a8a9b',
+      secondaryForeground: '#56687a',
     }
   },
   {
@@ -55,6 +61,9 @@ export const THEMES: Theme[] = [
       info:                '#58a6ff',
       thinkingBorder:      '#d97757',
       dimSeperator:        '#21262d',
+      foreground:          '#c9d1d9',
+      dim:                 '#768390',
+      secondaryForeground: '#545d68',
     }
   },
   {
@@ -73,6 +82,9 @@ export const THEMES: Theme[] = [
       info:                '#89b4fa',
       thinkingBorder:      '#cba6f7',
       dimSeperator:        '#313244',
+      foreground:          '#cdd6f4',
+      dim:                 '#7f849c',
+      secondaryForeground: '#585b70',
     }
   },
   {
@@ -91,6 +103,9 @@ export const THEMES: Theme[] = [
       info:                '#7dcfff',
       thinkingBorder:      '#bb9af7',
       dimSeperator:        '#292e42',
+      foreground:          '#c0caf5',
+      dim:                 '#737aa2',
+      secondaryForeground: '#565f89',
     }
   },
   {
@@ -109,6 +124,9 @@ export const THEMES: Theme[] = [
       info:                '#9ccfd8',
       thinkingBorder:      '#c4a7e7',
       dimSeperator:        '#2a2837',
+      foreground:          '#e0def4',
+      dim:                 '#908caa',
+      secondaryForeground: '#6e6a86',
     }
   },
   {
@@ -127,6 +145,9 @@ export const THEMES: Theme[] = [
       info:                '#48cae4',
       thinkingBorder:      '#00f5d4',
       dimSeperator:        '#0d3347',
+      foreground:          '#c2e8e0',
+      dim:                 '#5a8a7e',
+      secondaryForeground: '#3d6860',
     }
   },
   {
@@ -145,6 +166,9 @@ export const THEMES: Theme[] = [
       info:                '#bd93f9',
       thinkingBorder:      '#ff79c6',
       dimSeperator:        '#3d0030',
+      foreground:          '#f0d0e8',
+      dim:                 '#9a6888',
+      secondaryForeground: '#7a4868',
     }
   },
   {
@@ -163,6 +187,9 @@ export const THEMES: Theme[] = [
       info:                '#7eb8f7',
       thinkingBorder:      '#bf5fff',
       dimSeperator:        '#2d003d',
+      foreground:          '#e0d0f0',
+      dim:                 '#8a70a8',
+      secondaryForeground: '#6a5088',
     }
   },
   {
@@ -181,6 +208,9 @@ export const THEMES: Theme[] = [
       info:                '#57ffd8',
       thinkingBorder:      '#aaff00',
       dimSeperator:        '#1a3300',
+      foreground:          '#d5f0c0',
+      dim:                 '#7a9a58',
+      secondaryForeground: '#5a7a40',
     }
   },
   {
@@ -199,6 +229,9 @@ export const THEMES: Theme[] = [
       info:                '#4d96ff',
       thinkingBorder:      '#ffd93d',
       dimSeperator:        '#2e1f3a',
+      foreground:          '#e8d8f0',
+      dim:                 '#8a7898',
+      secondaryForeground: '#6a5878',
     }
   },
   {
@@ -217,6 +250,9 @@ export const THEMES: Theme[] = [
       info:                '#5e81ac',
       thinkingBorder:      '#81a1c1',
       dimSeperator:        '#243342',
+      foreground:          '#d8dee9',
+      dim:                 '#6d8099',
+      secondaryForeground: '#4c6078',
     }
   },
   {
@@ -235,6 +271,93 @@ export const THEMES: Theme[] = [
       info:                '#8be9fd',
       thinkingBorder:      '#ff79c6',
       dimSeperator:        '#44475a',
+      foreground:          '#f8f8f2',
+      dim:                 '#7a7e8e',
+      secondaryForeground: '#5a5e6e',
+    }
+  },
+  {
+    name: 'Gruvbox',
+    colors: {
+      background:          '#282828',
+      surface:             '#3c3836',
+      dialogSurface:       '#504945',
+      primary:             '#d79921',
+      planMode:            '#fe8019',
+      selection:           '#d79921',
+      selectionForeground: '#282828',
+      thinking:            '#fe8019',
+      success:             '#98971a',
+      error:               '#cc241d',
+      info:                '#458588',
+      thinkingBorder:      '#fe8019',
+      dimSeperator:        '#504945',
+      foreground:          '#ebdbb2',
+      dim:                 '#928374',
+      secondaryForeground: '#7c6f64',
+    }
+  },
+  {
+    name: 'RCB Special',
+    colors: {
+      background:          '#1a0a0a',
+      surface:             '#2a1010',
+      dialogSurface:       '#3a1515',
+      primary:             '#ffd700',
+      planMode:            '#ff8c00',
+      selection:           '#ffd700',
+      selectionForeground: '#1a0a0a',
+      thinking:            '#ffb347',
+      success:             '#32cd32',
+      error:               '#ee0033',
+      info:                '#87ceeb',
+      thinkingBorder:      '#ffd700',
+      dimSeperator:        '#3a2020',
+      foreground:          '#f5e6cc',
+      dim:                 '#a08080',
+      secondaryForeground: '#805050',
+    }
+  },
+  {
+    name: 'Paper Light',
+    colors: {
+      background:          '#faf8f5',
+      surface:             '#f0ece6',
+      dialogSurface:       '#e8e4de',
+      primary:             '#2563eb',
+      planMode:            '#7c3aed',
+      selection:           '#2563eb',
+      selectionForeground: '#ffffff',
+      thinking:            '#d97706',
+      success:             '#16a34a',
+      error:               '#dc2626',
+      info:                '#0891b2',
+      thinkingBorder:      '#d97706',
+      dimSeperator:        '#d6d0c8',
+      foreground:          '#1c1917',
+      dim:                 '#78716c',
+      secondaryForeground: '#a8a29e',
+    }
+  },
+  {
+    name: 'GitHub Light',
+    colors: {
+      background:          '#ffffff',
+      surface:             '#f6f8fa',
+      dialogSurface:       '#eaeef2',
+      primary:             '#0969da',
+      planMode:            '#8250df',
+      selection:           '#0969da',
+      selectionForeground: '#ffffff',
+      thinking:            '#bf8700',
+      success:             '#1a7f37',
+      error:               '#cf222e',
+      info:                '#0969da',
+      thinkingBorder:      '#bf8700',
+      dimSeperator:        '#d0d7de',
+      foreground:          '#1f2328',
+      dim:                 '#656d76',
+      secondaryForeground: '#8b949e',
     }
   },
 ]

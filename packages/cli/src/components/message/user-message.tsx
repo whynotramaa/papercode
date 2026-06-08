@@ -1,4 +1,4 @@
-import { TextAttributes } from "@opentui/core";
+
 import { useTheme } from "../../providers/theme";
 
 type Props = {
@@ -10,8 +10,8 @@ export function UserMessage({ message }: Props) {
   return (
     <box width="100%" flexDirection="row" gap={2} alignItems="flex-start">
       <text fg={colors.primary}>›</text>
-      <text fg={colors.primary} attributes={TextAttributes.DIM}>&lt;user&gt;</text>
-      <text>{message}</text>
+      <text fg={colors.dim}>&lt;user&gt;</text>
+      <text fg={colors.foreground}>{message}</text>
     </box>
   )
 }

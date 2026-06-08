@@ -5,6 +5,7 @@ import { KeyboardLayerProvider } from "../providers/keyboard-layer";
 import { ModelProvider } from "../providers/model";
 import { ThemeProvider } from "../providers/theme";
 import { ToastProvider } from "../providers/toast";
+import { SkillsProvider } from "../providers/skills";
 import { ThemedRoot } from "./themed-layout";
 
 export function RootLayout() {
@@ -14,11 +15,13 @@ export function RootLayout() {
         <KeyboardLayerProvider>
           <AuthProvider>
             <ModelProvider>
-              <DialogProvider>
-                <ThemedRoot>
-                  <Outlet />
-                </ThemedRoot>
-              </DialogProvider>
+              <SkillsProvider>
+                <DialogProvider>
+                  <ThemedRoot>
+                    <Outlet />
+                  </ThemedRoot>
+                </DialogProvider>
+              </SkillsProvider>
             </ModelProvider>
           </AuthProvider>
         </KeyboardLayerProvider>

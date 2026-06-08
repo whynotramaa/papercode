@@ -1,4 +1,4 @@
-import { TextAttributes, type InputRenderable } from "@opentui/core"
+import type { InputRenderable } from "@opentui/core"
 import { useCallback, useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
 import { useAuth, type SupportedCredentialProvider } from "../../providers/auth"
@@ -74,14 +74,15 @@ function ProviderSelectStep({ onSelect }: { onSelect: (p: ProviderOption) => voi
           p.id === "openai-compatible"
             ? !!credentials["openai-compatible"]
             : !!credentials[p.id]
-        const fg = isSelected ? colors.selectionForeground : undefined
+        const fg = isSelected ? colors.selectionForeground : colors.foreground
+        const mutedFg = isSelected ? colors.selectionForeground : colors.dim
         return (
           <box flexDirection="row" width="100%" gap={2}>
             <text selectable={false} fg={fg}>
               {isConfigured ? " ✓ " : "   "}
               {p.label}
             </text>
-            <text selectable={false} fg={fg} attributes={TextAttributes.DIM}>
+            <text selectable={false} fg={mutedFg}>
               {p.description}
             </text>
           </box>
@@ -103,6 +104,7 @@ function ApiKeyInputStep({
 }) {
   const { setProviderCredentials } = useAuth()
   const dialog = useDialog()
+  const { colors } = useTheme()
   const toast = useToast()
   const { isTopLayer } = useKeyboardLayer()
   const inputRef = useRef<InputRenderable>(null)
@@ -152,17 +154,17 @@ function ApiKeyInputStep({
   return (
     <box flexDirection="column" gap={1} width="100%">
       <box flexDirection="row" gap={1}>
-        <text>Provider:</text>
-        <text>{provider.label}</text>
+        <text fg={colors.dim}>Provider:</text>
+        <text fg={colors.foreground}>{provider.label}</text>
       </box>
       {provider.fixedBaseUrl && (
         <box flexDirection="row" gap={1}>
-          <text attributes={TextAttributes.DIM}>Base URL:</text>
-          <text attributes={TextAttributes.DIM}>{provider.fixedBaseUrl}</text>
+          <text fg={colors.dim}>Base URL:</text>
+          <text fg={colors.dim}>{provider.fixedBaseUrl}</text>
         </box>
       )}
       <box flexDirection="column" gap={0} marginTop={1}>
-        <text attributes={TextAttributes.DIM}>
+        <text fg={colors.dim}>
           {phase === "apiKey" ? "API Key" : "Base URL"}
         </text>
         {phase === "apiKey" ? (
@@ -181,7 +183,7 @@ function ApiKeyInputStep({
           />
         )}
       </box>
-      <text attributes={TextAttributes.DIM} marginTop={1}>
+      <text fg={colors.secondaryForeground} marginTop={1}>
         ↵ confirm  esc back
       </text>
     </box>
@@ -236,8 +238,8 @@ export function LogoutDialogContent() {
   if (configured.length === 0) {
     return (
       <box flexDirection="column" gap={1} paddingY={1}>
-        <text attributes={TextAttributes.DIM}>No providers configured.</text>
-        <text attributes={TextAttributes.DIM}>Type /login to add one.</text>
+        <text fg={colors.dim}>No providers configured.</text>
+        <text fg={colors.dim}>Type /login to add one.</text>
       </box>
     )
   }
@@ -249,11 +251,12 @@ export function LogoutDialogContent() {
       onHighlight={() => {}}
       filterFn={(p, q) => p.label.toLowerCase().includes(q.toLowerCase())}
       renderItem={(p, isSelected) => {
-        const fg = isSelected ? colors.selectionForeground : undefined
+        const fg = isSelected ? colors.selectionForeground : colors.foreground
+        const mutedFg = isSelected ? colors.selectionForeground : colors.dim
         return (
           <box flexDirection="row" width="100%" gap={2} paddingX={1}>
             <text selectable={false} fg={fg}>{p.label}</text>
-            <text selectable={false} fg={fg} attributes={TextAttributes.DIM}>
+            <text selectable={false} fg={mutedFg}>
               press ↵ to remove
             </text>
           </box>

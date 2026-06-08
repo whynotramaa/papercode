@@ -19,6 +19,7 @@
     "@papercode/shared": "workspace:*",
     "@types/react": "^19.2.15",
     "hono": "^4.12.23",
+    "marked": "^18.0.5",
     "react": "^19.2.6",
     "react-router": "^7.16.0",
     "zod": "^4.4.3"

@@ -67,6 +67,14 @@ const app = new Hono().get("/", async (c) => {
     })
     return c.json(session, 201)
   })
-
+  .delete("/:id", async (c) => {
+    const id = c.req.param("id")
+    await db.session.delete({ where: { id } })
+    return c.json({ success: true })
+  })
+  .delete("/", async (c) => {
+    await db.session.deleteMany({})
+    return c.json({ success: true })
+  })
 
 export default app

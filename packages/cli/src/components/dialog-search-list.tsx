@@ -1,4 +1,4 @@
-import { TextAttributes, type InputRenderable, type ScrollBoxRenderable } from "@opentui/core";
+import { type InputRenderable, type ScrollBoxRenderable } from "@opentui/core";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { useKeyboardLayer } from "../providers/keyboard-layer";
 import { useKeyboard } from "@opentui/react";
@@ -15,9 +15,11 @@ type DialogSearchListProps<T> = {
   getKey: (item: T) => string
   placeholder?: string
   emptyText?: string
+  onDeleteItem?: (item: T) => void
+  onDeleteAll?: () => void
 }
 
-export function DialogSearchList<T>({ items, onSelect, onHighlight, filterFn, renderItem, getKey, placeholder = "Search", emptyText = "No results found" }: DialogSearchListProps<T>) {
+export function DialogSearchList<T>({ items, onSelect, onHighlight, filterFn, renderItem, getKey, placeholder = "Search", emptyText = "No results found", onDeleteItem, onDeleteAll }: DialogSearchListProps<T>) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const inputRef = useRef<InputRenderable>(null);
@@ -41,6 +43,21 @@ export function DialogSearchList<T>({ items, onSelect, onHighlight, filterFn, re
 
   useKeyboard((key) => {
     if (!isTopLayer("dialog")) return;
+
+    if (key.name === "d" && key.option) {
+      key.preventDefault()
+      onDeleteAll?.()
+      return
+    }
+
+    if (key.name === "d" && !key.ctrl && !key.meta && !key.shift && !key.option) {
+      if (searchValue === "") {
+        key.preventDefault()
+        const item = filtered[selectedIndex]
+        if (item) onDeleteItem?.(item)
+        return
+      }
+    }
 
     if (key.name === "return" || key.name === "enter") {
       const item = filtered[selectedIndex]
@@ -81,7 +98,7 @@ export function DialogSearchList<T>({ items, onSelect, onHighlight, filterFn, re
     <box flexDirection="column" gap={1}>
       <input ref={inputRef} placeholder={placeholder} focused onContentChange={handleContentChange} />
       {filtered.length === 0 ? (
-        <text attributes={TextAttributes.DIM}>
+        <text fg={colors.dim}>
           {emptyText}
         </text>
       ) : (

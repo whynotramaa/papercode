@@ -11,9 +11,11 @@ import { useMemo } from "hono/jsx";
 import { apiClient } from "../lib/api-client";
 import { getErrorMessage } from "../lib/http-errors";
 import { useModel } from "../providers/model";
+import type { AppMode } from "../providers/mode";
 
 const newSessionStateSchema = z.object({
   message: z.string(),
+  mode: z.enum(["BUILD", "PLAN"]).default("BUILD"),
 })
 
 export function NewSession() {
@@ -51,7 +53,7 @@ export function NewSession() {
             initialMessage: {
               role: "USER",
               content: state.message,
-              mode: "BUILD",
+              mode: state.mode satisfies AppMode,
               model: selectedModel
             }
           }

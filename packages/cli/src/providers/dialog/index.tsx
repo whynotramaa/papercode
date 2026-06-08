@@ -101,8 +101,8 @@ function Dialog({ currentDialog, close }: DialogProps) {
           alignItems="center"
           justifyContent="space-between"
         >
-          <text attributes={TextAttributes.BOLD}>{title}</text>
-          <text attributes={TextAttributes.DIM} onMouseDown={() => close()}>
+          <text fg={colors.foreground} attributes={TextAttributes.BOLD}>{title}</text>
+          <text fg={colors.dim} onMouseDown={() => close()}>
             esc
           </text>
         </box>

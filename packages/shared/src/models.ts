@@ -9,6 +9,7 @@ type SupportedChatModeDefinition = {
   id: string
   provider: SupportedProvider
   pricing: ModelPricing
+  contextWindow: number
 }
 
 export const SUPPORTED_CHAT_MODELS = [
@@ -19,6 +20,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 5,
       outputUsdPerMillionTokens: 30,
     },
+    contextWindow: 256_000,
   },
   {
     id: "gpt-5.5-pro",
@@ -27,6 +29,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 30,
       outputUsdPerMillionTokens: 180,
     },
+    contextWindow: 256_000,
   },
   {
     id: "gpt-5.4",
@@ -35,6 +38,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 2.5,
       outputUsdPerMillionTokens: 15,
     },
+    contextWindow: 128_000,
   },
   {
     id: "gpt-5.4-mini",
@@ -43,6 +47,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 0.75,
       outputUsdPerMillionTokens: 4.5,
     },
+    contextWindow: 128_000,
   },
   {
     id: "gpt-5.3-codex",
@@ -51,6 +56,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 1.75,
       outputUsdPerMillionTokens: 14,
     },
+    contextWindow: 200_000,
   },
   {
     id: "claude-opus-4-8",
@@ -59,6 +65,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 5,
       outputUsdPerMillionTokens: 25,
     },
+    contextWindow: 200_000,
   },
   {
     id: "claude-sonnet-4-6",
@@ -67,6 +74,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 3,
       outputUsdPerMillionTokens: 15,
     },
+    contextWindow: 200_000,
   },
   {
     id: "claude-haiku-4-5",
@@ -75,6 +83,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 1,
       outputUsdPerMillionTokens: 5,
     },
+    contextWindow: 200_000,
   },
   {
     id: "gemini-3.5-flash",
@@ -83,6 +92,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 1.5,
       outputUsdPerMillionTokens: 9,
     },
+    contextWindow: 1_000_000,
   },
   {
     id: "gemini-3.1-pro",
@@ -91,6 +101,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 2,
       outputUsdPerMillionTokens: 12,
     },
+    contextWindow: 1_000_000,
   },
   {
     id: "qwen3.7-max",
@@ -99,6 +110,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 2.5,
       outputUsdPerMillionTokens: 7.5,
     },
+    contextWindow: 128_000,
   },
   {
     id: "qwen3.7-plus",
@@ -107,6 +119,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 0.4,
       outputUsdPerMillionTokens: 1.6,
     },
+    contextWindow: 128_000,
   },
   {
     id: "deepseek-v4-flash",
@@ -115,6 +128,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 0.14,
       outputUsdPerMillionTokens: 0.28,
     },
+    contextWindow: 128_000,
   },
   {
     id: "kimi-k2.6",
@@ -123,6 +137,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 0.95,
       outputUsdPerMillionTokens: 4,
     },
+    contextWindow: 128_000,
   },
   {
     id: "minimax-m2.7",
@@ -131,6 +146,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 0.3,
       outputUsdPerMillionTokens: 1.2,
     },
+    contextWindow: 128_000,
   },
   {
     id: "big-pickle",
@@ -139,6 +155,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 0,
       outputUsdPerMillionTokens: 0,
     },
+    contextWindow: 128_000,
   },
   {
     id: "deepseek-v4-flash-free",
@@ -147,6 +164,7 @@ export const SUPPORTED_CHAT_MODELS = [
       inputUsdPerMillionTokens: 0,
       outputUsdPerMillionTokens: 0,
     },
+    contextWindow: 128_000,
   },
 ] as const satisfies readonly SupportedChatModeDefinition[]
 
@@ -164,3 +182,8 @@ export function findSupportedChatModel(modelId: string) {
 }
 
 export const DEFAULT_CHAT_MODEL_ID: SupportedChatModelId = "deepseek-v4-flash-free"
+
+export function getModelContextWindow(modelId: string): number {
+  const model = findSupportedChatModel(modelId)
+  return model?.contextWindow ?? 128_000
+}

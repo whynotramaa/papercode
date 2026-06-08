@@ -2,6 +2,7 @@ export {
   SUPPORTED_CHAT_MODELS,
   DEFAULT_CHAT_MODEL_ID,
   findSupportedChatModel,
+  getModelContextWindow,
   normalizeChatModelId,
   type ModelPricing,
   type SupportedProvider,
@@ -16,6 +17,8 @@ export {
   messagePartsSchema,
   chatStreamEventSchema,
   type MessagePart,
-  type ChatStreamEvent
-
+  type ChatStreamEvent,
+  skillSchema,
+  skillsFileSchema,
+  type Skill,
 } from "./schemas"

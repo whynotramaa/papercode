@@ -1,33 +1,27 @@
-import { TextAttributes } from "@opentui/core";
-import { DEFAULT_CHAT_MODEL_ID } from "@papercode/shared";
+
 import { useAuth } from "../providers/auth";
 import { useModel } from "../providers/model";
 import { useTheme } from "../providers/theme";
+import { useOptionalMode } from "../providers/mode";
 
 export function StatusBar() {
   const { colors } = useTheme()
   const { selectedModel } = useModel()
   const { isSetup } = useAuth()
-
-  let rightContent: { text: string; dim?: boolean; fg?: string }
-  if (!isSetup) {
-    rightContent = { text: "github: @whynotramaa", dim: true }
-  } else if (selectedModel === DEFAULT_CHAT_MODEL_ID) {
-    rightContent = { text: "select a model", dim: true, fg: colors.primary }
-  } else {
-    rightContent = { text: selectedModel }
-  }
+  const modeCtx = useOptionalMode()
+  const mode = modeCtx?.mode ?? "BUILD"
 
   return (
     <box flexDirection="row" gap={1} alignItems="center">
-      <text fg={colors.primary}>Build</text>
-      <text attributes={TextAttributes.DIM} fg={colors.dimSeperator}>›</text>
-      <text
-        fg={rightContent.fg}
-        attributes={rightContent.dim ? TextAttributes.DIM : undefined}
-      >
-        {rightContent.text}
+      <text fg={mode === "BUILD" ? colors.primary : colors.planMode}>
+        {mode === "BUILD" ? "Build" : "Plan"}
       </text>
+      <text fg={colors.dim}>›</text>
+      {isSetup ? (
+        <text fg={colors.foreground}>{selectedModel}</text>
+      ) : (
+        <text fg={colors.dim}>@whynotramaa</text>
+      )}
     </box>
   );
 }
