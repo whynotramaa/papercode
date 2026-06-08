@@ -14,8 +14,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@opentui/core": "0.3.0",
-    "@opentui/react": "^0.3.0",
+    "@opentui/core": "0.3.4",
+    "@opentui/react": "^0.3.4",
     "@papercode/shared": "workspace:*",
     "@types/react": "^19.2.15",
     "hono": "^4.12.23",

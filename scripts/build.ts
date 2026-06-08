@@ -31,6 +31,16 @@ const cliResult = await Bun.build({
   outdir: "dist",
   naming: "cli.js",
   target: "bun",
+  external: [
+    "@opentui/core-darwin-x64",
+    "@opentui/core-darwin-arm64",
+    "@opentui/core-linux-x64",
+    "@opentui/core-linux-x64-musl",
+    "@opentui/core-linux-arm64",
+    "@opentui/core-linux-arm64-musl",
+    "@opentui/core-win32-x64",
+    "@opentui/core-win32-arm64",
+  ],
 })
 if (!cliResult.success) {
   console.error("CLI build failed:", cliResult.logs)
