@@ -119,7 +119,7 @@ async function streamAIResponse(
     for await (const part of result.fullStream) {
       if (stream.aborted || abortController.signal.aborted) break
 
-      if (part.type === "reasoning") {
+      if (part.type === "reasoning-delta") {
         const event: ChatStreamEvent = { type: "reasoning-delta", text: (part as any).text ?? "" }
         await stream.writeSSE({ event: "reasoning-delta", data: JSON.stringify(event) })
       }

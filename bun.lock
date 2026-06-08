@@ -8,6 +8,7 @@
         "@opentui/core": "^0.3.4",
         "@pierre/diffs": "^1.2.7",
         "opentui-spinner": "^0.0.6",
+        "papercode": "^0.1.3",
         "react-dom": "^19.2.7",
         "streamdown": "^2.5.0",
       },
@@ -15,7 +16,9 @@
         "@opentui/core-darwin-arm64": "^0.3.4",
         "@opentui/core-darwin-x64": "^0.3.4",
         "@opentui/core-linux-arm64": "^0.3.4",
+        "@opentui/core-linux-arm64-musl": "^0.3.4",
         "@opentui/core-linux-x64": "^0.3.4",
+        "@opentui/core-linux-x64-musl": "^0.3.4",
         "@opentui/core-win32-arm64": "^0.3.4",
         "@opentui/core-win32-x64": "^0.3.4",
       },
@@ -677,6 +680,8 @@
     "opentui-spinner": ["opentui-spinner@0.0.6", "", { "dependencies": { "cli-spinners": "^3.3.0" }, "peerDependencies": { "@opentui/core": "^0.1.49", "@opentui/react": "^0.1.49", "@opentui/solid": "^0.1.49", "typescript": "^5" }, "optionalPeers": ["@opentui/react", "@opentui/solid"] }, "sha512-xupLOeVQEAXEvVJCvHkfX6fChDWmJIPHe5jyUrVb8+n4XVTX8mBNhitFfB9v2ZbkC1H2UwPab/ElePHoW37NcA=="],
 
     "package-manager-detector": ["package-manager-detector@1.6.0", "", {}, "sha512-61A5ThoTiDG/C8s8UMZwSorAGwMJ0ERVGj2OjoW5pAalsNOg15+iQiPzrLJ4jhZ1HJzmC2PIHT2oEiH3R5fzNA=="],
+
+    "papercode": ["papercode@0.1.3", "", { "dependencies": { "@opentui/core": "^0.3.4", "@pierre/diffs": "^1.2.7", "opentui-spinner": "^0.0.6", "react-dom": "^19.2.7", "streamdown": "^2.5.0" }, "optionalDependencies": { "@opentui/core-darwin-arm64": "^0.3.4", "@opentui/core-darwin-x64": "^0.3.4", "@opentui/core-linux-arm64": "^0.3.4", "@opentui/core-linux-arm64-musl": "^0.3.4", "@opentui/core-linux-x64": "^0.3.4", "@opentui/core-linux-x64-musl": "^0.3.4", "@opentui/core-win32-arm64": "^0.3.4", "@opentui/core-win32-x64": "^0.3.4" }, "bin": { "papercode": "bin/papercode.js" } }, "sha512-OYbh3PxZ00P/sHMy7rW7M+LeYfwJ0l8YPqOlawSi7RmIGqx2qxomMmcm79PbUajX8BKKlKjmjQlCJQ7Zlcw6MA=="],
 
     "parse-entities": ["parse-entities@4.0.2", "", { "dependencies": { "@types/unist": "^2.0.0", "character-entities-legacy": "^3.0.0", "character-reference-invalid": "^2.0.0", "decode-named-character-reference": "^1.0.0", "is-alphanumerical": "^2.0.0", "is-decimal": "^2.0.0", "is-hexadecimal": "^2.0.0" } }, "sha512-GG2AQYWoLgL877gQIKeRPGO1xF9+eG1ujIb5soS5gPvLQ1y2o8FL90w2QWNdf9I361Mpp7726c+lj3U0qK1uGw=="],
 

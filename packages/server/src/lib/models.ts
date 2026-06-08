@@ -58,6 +58,9 @@ function resolveSupportedChatModel(model: SupportedChatModel, creds?: ProviderCr
   }
 
   // Fall back to module-level Zen instances
+  if (!apiKey) {
+    throw new Error("No API key provided. Add your provider API key in settings, or set OPENCODE_ZEN_API_KEY in your environment.");
+  }
   switch (provider) {
     case "anthropic":
       return { model: anthropic(model.id as Extract<SupportedChatModel, { provider: "anthropic" }>["id"]), provider, modelId: model.id };
