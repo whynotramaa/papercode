@@ -1,0 +1,7 @@
+packages/
+src/
+.env
+.env.*
+*.md
+bun.lock
+tsconfig*.json

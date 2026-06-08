@@ -6,6 +6,8 @@ import { RouterProvider } from "react-router/dom";
 import { Home } from "./screens/home";
 import { NewSession } from "./screens/new-session";
 import { Session } from "./screens/session";
+import { getMachineId } from "./lib/machine-id";
+import { setMachineId } from "./lib/api-client";
 
 const router = createMemoryRouter([
   {
@@ -23,6 +25,9 @@ const router = createMemoryRouter([
 function App() {
   return <RouterProvider router={router} />
 }
+
+const machineId = await getMachineId()
+setMachineId(machineId)
 
 const renderer = await createCliRenderer({
   targetFps: 60,

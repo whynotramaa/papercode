@@ -28,7 +28,9 @@ const createSessionValidator = zValidator(
 
 
 const app = new Hono().get("/", async (c) => {
+  const userId = c.req.header("x-machine-id") ?? "anonymous"
   const result = await db.session.findMany({
+    where: { userId },
     orderBy: { createdAt: "desc" },
     select: { id: true, title: true, createdAt: true }
   })
@@ -49,11 +51,12 @@ const app = new Hono().get("/", async (c) => {
     return c.json(session)
   })
   .post("/", createSessionValidator, async (c) => {
+    const userId = c.req.header("x-machine-id") ?? "anonymous"
     const { initialMessage, ...data } = c.req.valid("json")
     const session = await db.session.create({
       data: {
         ...data,
-        userId: "mock-user",
+        userId,
         ...(initialMessage && {
           messages: {
             create: {

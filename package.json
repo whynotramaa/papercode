@@ -1,6 +1,19 @@
 {
   "name": "papercode",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "bin": {
+    "papercode": "./bin/papercode.js"
+  },
+  "files": [
+    "dist/",
+    "bin/"
+  ],
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@opentui/core": "^0.3.1",
     "@pierre/diffs": "^1.2.7",
@@ -10,7 +23,9 @@
   },
   "scripts": {
     "dev:cli": "bun run --watch packages/cli/src/index.tsx",
-    "dev:server": "bun run --hot packages/server/src/index.ts"
+    "dev:server": "bun run --hot packages/server/src/index.ts",
+    "build": "bun run scripts/build.ts",
+    "prepublishOnly": "bun run build"
   },
   "workspaces": [
     "packages/*"
