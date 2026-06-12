@@ -15,21 +15,23 @@
     "access": "public"
   },
   "dependencies": {
-    "@opentui/core": "^0.3.4",
+    "@opentui/core": "0.3.4",
+    "@opentui/react": "^0.3.4",
     "@pierre/diffs": "^1.2.7",
     "opentui-spinner": "^0.0.6",
+    "react": "^19.2.6",
     "react-dom": "^19.2.7",
     "streamdown": "^2.5.0"
   },
   "optionalDependencies": {
-    "@opentui/core-darwin-x64": "^0.3.4",
-    "@opentui/core-darwin-arm64": "^0.3.4",
-    "@opentui/core-linux-x64": "^0.3.4",
-    "@opentui/core-linux-x64-musl": "^0.3.4",
-    "@opentui/core-linux-arm64": "^0.3.4",
-    "@opentui/core-linux-arm64-musl": "^0.3.4",
-    "@opentui/core-win32-x64": "^0.3.4",
-    "@opentui/core-win32-arm64": "^0.3.4"
+    "@opentui/core-darwin-arm64": "0.3.4",
+    "@opentui/core-darwin-x64": "0.3.4",
+    "@opentui/core-linux-arm64": "0.3.4",
+    "@opentui/core-linux-arm64-musl": "0.3.4",
+    "@opentui/core-linux-x64": "0.3.4",
+    "@opentui/core-linux-x64-musl": "0.3.4",
+    "@opentui/core-win32-arm64": "0.3.4",
+    "@opentui/core-win32-x64": "0.3.4"
   },
   "scripts": {
     "dev:cli": "bun run --watch packages/cli/src/index.tsx",
