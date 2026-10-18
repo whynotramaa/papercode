@@ -30,6 +30,7 @@ export const writeTool: Tool<typeof schema> = {
         .then((s) => s.isFile())
         .catch(() => false);
 
+      await ctx.beforeWrite?.(resolved.path);
       await fs.mkdir(path.dirname(resolved.path), { recursive: true });
       await fs.writeFile(resolved.path, args.content, "utf8");
 

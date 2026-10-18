@@ -2,9 +2,10 @@ import type { z } from "zod";
 import type { PermissionLevel } from "./permissions.js";
 
 export type ToolContext = {
-  
   root: string;
   signal: AbortSignal;
+  onOutput?: (chunk: string) => void;
+  beforeWrite?: (absPath: string) => void | Promise<void>;
 };
 
 export type ToolResult = {
@@ -48,4 +49,12 @@ export function truncate(text: string, limit = MAX_OUTPUT_CHARS): string {
   if (text.length <= limit) return text;
   const omitted = text.length - limit;
   return `${text.slice(0, limit)}\n\n[... truncated ${omitted.toLocaleString()} characters. Narrow the query or use offset/limit to see more.]`;
+}
+
+export function truncateMiddle(text: string, limit = MAX_OUTPUT_CHARS): string {
+  if (text.length <= limit) return text;
+  const head = Math.floor(limit * 0.4);
+  const tail = limit - head;
+  const omitted = text.length - limit;
+  return `${text.slice(0, head)}\n\n[... ${omitted.toLocaleString()} characters omitted ...]\n\n${text.slice(-tail)}`;
 }

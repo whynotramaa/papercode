@@ -24,10 +24,6 @@ export function sessionsDir(): string {
   return path.join(configDir(), "sessions");
 }
 
-export function sessionPath(id: string): string {
-  return path.join(sessionsDir(), `${id}.json`);
-}
-
 
 export function projectSkillsPath(cwd = process.cwd()): string {
   return path.join(cwd, ".papercode", "skills.json");

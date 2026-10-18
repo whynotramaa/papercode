@@ -11,11 +11,12 @@ const SettingsSchema = z.object({
   systemPrompt: z.string().optional(),
   
   showThinking: z.boolean().catch(false).default(false),
+  maxSteps: z.number().int().positive().catch(100).default(100),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
 
-const DEFAULTS: Settings = { theme: DEFAULT_THEME, showThinking: false };
+const DEFAULTS: Settings = { theme: DEFAULT_THEME, showThinking: false, maxSteps: 100 };
 
 export function loadSettings(): Settings {
   const parsed = SettingsSchema.safeParse(readJson<unknown>(settingsPath(), DEFAULTS));

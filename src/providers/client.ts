@@ -79,3 +79,11 @@ export function sleep(ms: number, signal: AbortSignal): Promise<void> {
     signal.addEventListener("abort", done, { once: true });
   });
 }
+
+const OVERFLOW = /context.length|context.window|maximum context|too many tokens|prompt is too long|input is too long|exceeds? the (?:context|maximum)|reduce the length|token limit/i;
+
+export function isContextOverflow(err: unknown): boolean {
+  if (!(err instanceof OpenAI.APIError)) return false;
+  if (err.status !== 400 && err.status !== 413 && err.status !== 422) return false;
+  return OVERFLOW.test(`${err.message} ${JSON.stringify(err.error ?? "")}`);
+}

@@ -29,7 +29,7 @@ export const COMMANDS: Command[] = [
   { name: "disconnect", description: "Remove a configured provider", aliases: ["logout"] },
   { name: "skills", description: "Create and manage custom slash-command prompts" },
   { name: "theme", description: "Change the UI theme", aliases: ["themes"] },
-  { name: "compact", description: "Summarize earlier context to free room" },
+  { name: "compact", description: "Summarize earlier context, optionally with focus: /compact <focus>" },
   { name: "prompt", description: "Edit the custom system prompt" },
   { name: "copy", description: "Copy the last response to the clipboard" },
   { name: "help", description: "Show keyboard shortcuts and tips" },

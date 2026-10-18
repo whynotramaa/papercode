@@ -21,34 +21,64 @@ import {
 import { Connect } from "./ui/views/Connect.js";
 import { Help } from "./ui/views/Help.js";
 import { Skills } from "./ui/views/Skills.js";
-import type { PaletteEntry } from "./ui/commands.js";
+import { resolveCommand, type PaletteEntry } from "./ui/commands.js";
 
 import { loadSettings, updateSettings } from "./config/settings.js";
 import { listProviders, getProvider, removeProvider } from "./config/auth.js";
 import { loadSkills } from "./config/skills.js";
-import { createClient, describeError } from "./providers/client.js";
+import { createClient, describeError, isAbort, isContextOverflow } from "./providers/client.js";
 import { refreshModels } from "./providers/models.js";
 import { detectCompat } from "./providers/compat.js";
 import { contextWindow, modelInfo, refreshCatalog, usageCost } from "./providers/catalog.js";
 import { runTurn } from "./agent/loop.js";
 import { buildSystemPrompt, modeReminder, stripReminders } from "./agent/systemPrompt.js";
-import { compact, estimateTokens } from "./agent/compact.js";
+import { compact, estimateTokens, maskToolResults, shouldCompact, SUMMARY_MARKER } from "./agent/compact.js";
 import { executeTool, getTool, isReadOnlyTool, toolDefinitions, type AnyTool } from "./tools/index.js";
 import { ApprovalStore, type Mode } from "./tools/permissions.js";
 import type { ChatMessage } from "./agent/messages.js";
 import {
+  appendCompaction,
+  appendInfo,
+  appendMessages,
   createSession,
   deleteSession,
   listSessions,
   loadSession,
   relativeTime,
-  saveSession,
+  sessionMessages,
   type Session,
 } from "./sessions/store.js";
 
 type View = "chat" | "connect" | "sessions" | "models" | "theme" | "skills" | "help" | "disconnect";
 
 const COMPACT_AT = 0.8;
+
+function transcriptOf(messages: ChatMessage[]): Entry[] {
+  const rebuilt: Entry[] = [];
+  let toolRun = 0;
+  const flush = () => {
+    if (toolRun > 0) {
+      rebuilt.push({ kind: "notice", text: `  ${toolRun} tool call${toolRun === 1 ? "" : "s"}`, tone: "info" });
+      toolRun = 0;
+    }
+  };
+
+  for (const m of messages) {
+    if (m.role === "user" && typeof m.content === "string") {
+      flush();
+      if (m.content.startsWith(SUMMARY_MARKER)) rebuilt.push({ kind: "notice", text: "Earlier conversation summarized.", tone: "info" });
+      else rebuilt.push({ kind: "user", text: stripReminders(m.content) });
+    } else if (m.role === "assistant") {
+      if ("tool_calls" in m && m.tool_calls) toolRun += m.tool_calls.length;
+      if (typeof m.content === "string" && m.content.trim()) {
+        flush();
+        rebuilt.push({ kind: "assistant", text: m.content });
+      }
+    }
+  }
+  flush();
+  return rebuilt;
+}
 
 export function App({ initialCwd }: { initialCwd: string }) {
   const { exit } = useApp();
@@ -63,6 +93,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [streaming, setStreaming] = useState("");
   const [thinking, setThinking] = useState("");
+  const [liveOutput, setLiveOutput] = useState("");
   const [busy, setBusy] = useState(false);
   const [compacting, setCompacting] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -82,6 +113,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
   
   const toolPreviews = useRef(new Map<string, string>());
   const announcedMode = useRef<Mode | null>(null);
+  const persistedCount = useRef(0);
 
   const [skills, setSkills] = useState(() => loadSkills(initialCwd));
   const providers = listProviders();
@@ -126,16 +158,22 @@ export function App({ initialCwd }: { initialCwd: string }) {
   }, [busy]);
 
   const persist = useCallback(() => {
-    if (messagesRef.current.length === 0) return;
-    const next: Session = {
-      ...session,
-      messages: messagesRef.current,
-      provider: settings.activeProvider,
-      model: settings.activeModel,
-    };
-    saveSession(next);
-    setSession(next);
+    const pending = messagesRef.current.slice(persistedCount.current);
+    if (pending.length === 0) return;
+    appendInfo(session, settings.activeProvider, settings.activeModel);
+    appendMessages(session, pending);
+    persistedCount.current = messagesRef.current.length;
   }, [session, settings.activeProvider, settings.activeModel]);
+
+  const replaceHistory = useCallback(
+    (messages: ChatMessage[], summarized: number) => {
+      persist();
+      messagesRef.current = messages;
+      appendCompaction(session, messages, summarized);
+      persistedCount.current = messages.length;
+    },
+    [persist, session],
+  );
 
   const requestApproval = useCallback(
     (tool: AnyTool, args: unknown): Promise<boolean> => {
@@ -159,6 +197,52 @@ export function App({ initialCwd }: { initialCwd: string }) {
     [],
   );
 
+  const compactNow = useCallback(
+    async (opts: { focus?: string; auto?: boolean; signal?: AbortSignal }): Promise<boolean> => {
+      const provider = settings.activeProvider ? getProvider(settings.activeProvider) : undefined;
+      const model = settings.activeModel;
+      if (!provider || !model) {
+        notice("No model selected.", "error");
+        return false;
+      }
+      const before = estimateTokens(messagesRef.current);
+
+      if (opts.auto) {
+        const window = contextWindow(modelInfo(detectCompat(provider.baseURL, model).kind, model));
+        const masked = maskToolResults(messagesRef.current);
+        if (masked.saved > 0 && before - masked.saved < window * 0.6) {
+          replaceHistory(masked.messages, 0);
+          setTokens(before - masked.saved);
+          push({ kind: "compaction", summarized: 0, before, after: before - masked.saved });
+          return true;
+        }
+      }
+
+      setCompacting(true);
+      try {
+        const result = await compact({
+          client: createClient(provider),
+          model,
+          messages: messagesRef.current,
+          focus: opts.focus,
+          signal: opts.signal,
+        });
+        if (result.summarized === 0) {
+          if (!opts.auto) notice("Nothing to compact.", "info");
+          return false;
+        }
+        replaceHistory(result.messages, result.summarized);
+        const after = estimateTokens(result.messages);
+        setTokens(after);
+        push({ kind: "compaction", summarized: result.summarized, before, after });
+        return true;
+      } finally {
+        setCompacting(false);
+      }
+    },
+    [notice, push, replaceHistory, settings.activeModel, settings.activeProvider],
+  );
+
   const send = useCallback(
     async (text: string) => {
       const provider = settings.activeProvider ? getProvider(settings.activeProvider) : undefined;
@@ -180,7 +264,8 @@ export function App({ initialCwd }: { initialCwd: string }) {
       messagesRef.current.push({ role: "user", content: text + reminder });
       const turnCompat = detectCompat(provider.baseURL, model);
       const turnInfo = modelInfo(turnCompat.kind, model);
-      let measured = false;
+      const window = contextWindow(turnInfo);
+      let measured: number | null = null;
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -189,8 +274,8 @@ export function App({ initialCwd }: { initialCwd: string }) {
       setThinking("");
       thinkStart.current = Date.now();
 
-      try {
-        await runTurn({
+      const go = () =>
+        runTurn({
           client: createClient(provider),
           model,
           compat: turnCompat,
@@ -198,13 +283,18 @@ export function App({ initialCwd }: { initialCwd: string }) {
           messages: messagesRef.current,
           tools: toolDefinitions(),
           isParallelSafe: isReadOnlyTool,
+          maxSteps: settings.maxSteps,
           signal: controller.signal,
           executeTool: async (call) => {
             const result = await executeTool({
               name: call.function.name,
               rawArgs: call.function.arguments,
               mode,
-              ctx: { root: session.cwd, signal: controller.signal },
+              ctx: {
+                root: session.cwd,
+                signal: controller.signal,
+                onOutput: (chunk) => setLiveOutput((o) => (o + chunk).slice(-4000)),
+              },
               requestApproval,
             });
             return { content: result.content, isError: Boolean(result.isError) };
@@ -220,8 +310,8 @@ export function App({ initialCwd }: { initialCwd: string }) {
                 break;
 
               case "usage":
-                measured = true;
-                setTokens(event.usage.input + event.usage.output);
+                measured = event.usage.input + event.usage.output;
+                setTokens(measured);
                 setCost((c) => c + usageCost(turnInfo, event.usage));
                 break;
 
@@ -242,6 +332,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
               }
 
               case "tool_end": {
+                setLiveOutput("");
                 push({
                   kind: "tool",
                   name: event.name,
@@ -272,21 +363,36 @@ export function App({ initialCwd }: { initialCwd: string }) {
             }
           },
         });
+
+      try {
+        try {
+          await go();
+        } catch (err) {
+          if (!isContextOverflow(err) || controller.signal.aborted) throw err;
+          notice("The context window overflowed. Compacting and retrying.", "info");
+          if (!(await compactNow({ signal: controller.signal }))) throw err;
+          await go();
+        }
+        const used = measured ?? estimateTokens(messagesRef.current);
+        if (!controller.signal.aborted && shouldCompact(used, window)) {
+          await compactNow({ auto: true, signal: controller.signal });
+        }
       } catch (err) {
-        notice(describeError(err), "error");
+        if (!isAbort(err)) notice(describeError(err), "error");
       } finally {
         setBusy(false);
         abortRef.current = null;
-        if (!measured) setTokens(estimateTokens(messagesRef.current));
+        if (measured === null) setTokens(estimateTokens(messagesRef.current));
         persist();
       }
     },
-    [mode, notice, persist, push, requestApproval, session.cwd, session.id, settings.activeModel, settings.activeProvider],
+    [compactNow, mode, notice, persist, push, requestApproval, session.cwd, session.id, settings.activeModel, settings.activeProvider, settings.maxSteps],
   );
 
   const startNew = useCallback(() => {
     persist();
     messagesRef.current = [];
+    persistedCount.current = 0;
     announcedMode.current = null;
     approvals.current.clear();
     clearScreen();
@@ -303,82 +409,39 @@ export function App({ initialCwd }: { initialCwd: string }) {
       const loaded = loadSession(id);
       if (!loaded) return notice("Could not load that session.", "error");
 
-      messagesRef.current = loaded.messages;
+      messagesRef.current = sessionMessages(loaded);
+      persistedCount.current = messagesRef.current.length;
       announcedMode.current = null;
       approvals.current.clear();
       setCost(0);
       clearScreen();
       setSession(loaded);
-      setTokens(estimateTokens(loaded.messages));
-
-      // Rebuild the transcript from history. Tool traffic is collapsed to a
-      // count: replaying every result verbatim buries the conversation.
-      const rebuilt: Entry[] = [];
-      let toolRun = 0;
-      const flush = () => {
-        if (toolRun > 0) {
-          rebuilt.push({ kind: "notice", text: `  ${toolRun} tool call${toolRun === 1 ? "" : "s"}`, tone: "info" });
-          toolRun = 0;
-        }
-      };
-
-      for (const m of loaded.messages) {
-        if (m.role === "user" && typeof m.content === "string") {
-          flush();
-          rebuilt.push({ kind: "user", text: stripReminders(m.content) });
-        } else if (m.role === "assistant") {
-          if ("tool_calls" in m && m.tool_calls) toolRun += m.tool_calls.length;
-          if (typeof m.content === "string" && m.content.trim()) {
-            flush();
-            rebuilt.push({ kind: "assistant", text: m.content });
-          }
-        }
-      }
-      flush();
-
+      setTokens(estimateTokens(messagesRef.current));
+      const rebuilt = transcriptOf(messagesRef.current);
       setEntries(rebuilt);
       setView("chat");
     },
     [clearScreen, notice],
   );
 
-  const doCompact = useCallback(async () => {
-    const provider = settings.activeProvider ? getProvider(settings.activeProvider) : undefined;
-    if (!provider || !settings.activeModel) return notice("No model selected.", "error");
-    if (messagesRef.current.length < 4) return notice("Not enough history to compact.", "info");
-
-    setBusy(true);
-    setCompacting(true);
-    try {
-      const before = estimateTokens(messagesRef.current);
-      const result = await compact({
-        client: createClient(provider),
-        model: settings.activeModel,
-        messages: messagesRef.current,
-      });
-
-      if (result.summarized === 0) {
-        notice("Nothing to compact.", "info");
-      } else {
-        messagesRef.current = result.messages;
-        const after = estimateTokens(result.messages);
-        setTokens(after);
-
-        // The transcript above no longer matches the history the model sees, so
-        // it goes — screen and scrollback both — and the receipt becomes the
-        // whole transcript. Replacing the list needs the epoch bump to reprint.
-        clearScreen();
-        setEntries([{ kind: "compaction", summarized: result.summarized, before, after }]);
-        setEpoch((e) => e + 1);
+  const doCompact = useCallback(
+    async (focus?: string) => {
+      if (messagesRef.current.length < 4) return notice("Not enough history to compact.", "info");
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setBusy(true);
+      try {
+        await compactNow({ focus, signal: controller.signal });
         persist();
+      } catch (err) {
+        if (!isAbort(err)) notice(describeError(err), "error");
+      } finally {
+        setBusy(false);
+        abortRef.current = null;
       }
-    } catch (err) {
-      notice(describeError(err), "error");
-    } finally {
-      setBusy(false);
-      setCompacting(false);
-    }
-  }, [clearScreen, notice, persist, settings.activeModel, settings.activeProvider]);
+    },
+    [compactNow, notice, persist],
+  );
 
   
   const toggleThinking = useCallback(() => {
@@ -399,7 +462,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
   }, [entries, notice]);
 
   const onPalette = useCallback(
-    (entry: PaletteEntry) => {
+    (entry: PaletteEntry, args = "") => {
       if (entry.kind === "skill") {
         void send(entry.skill.prompt);
         return;
@@ -423,7 +486,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
         case "help":
           return setView("help");
         case "compact":
-          return void doCompact();
+          return void doCompact(args);
         case "copy":
           return void copyLast();
         case "prompt":
@@ -437,6 +500,25 @@ export function App({ initialCwd }: { initialCwd: string }) {
       }
     },
     [copyLast, doCompact, exit, notice, persist, send, startNew],
+  );
+
+  const submit = useCallback(
+    (text: string) => {
+      const match = text.match(/^\/(\S+)\s*([\s\S]*)$/);
+      if (match) {
+        const command = resolveCommand(match[1]!);
+        if (command) {
+          return onPalette(
+            { kind: "command", name: command.name, label: `/${command.name}`, description: command.description },
+            match[2],
+          );
+        }
+        const skill = skills.skills.find((s) => s.name.toLowerCase() === match[1]!.toLowerCase());
+        if (skill) return void send(match[2] ? `${skill.prompt}\n\n${match[2]}` : skill.prompt);
+      }
+      void send(text);
+    },
+    [onPalette, send, skills.skills],
   );
 
   // Esc, Ctrl+Y and Ctrl+T must work while a response streams, which is exactly
@@ -496,6 +578,20 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
         {thinking && <ThinkingBlock text={thinking} seconds={0} collapsed={false} />}
         {streaming && <StreamingMessage text={streaming} />}
+
+        {liveOutput && !approval && (
+          <Box flexDirection="column" paddingLeft={4}>
+            {liveOutput
+              .trimEnd()
+              .split("\n")
+              .slice(-5)
+              .map((line, i) => (
+                <Text key={i} color={THEMES[theme].faint} wrap="truncate-end">
+                  {line || " "}
+                </Text>
+              ))}
+          </Box>
+        )}
 
         {approval && <ApprovalPrompt request={approval} />}
 
@@ -626,7 +722,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
             cwd={session.cwd}
             skills={skills.skills}
             busy={busy}
-            onSubmit={(text) => void send(text)}
+            onSubmit={submit}
             onPalette={onPalette}
             onToggleMode={() => setMode((m) => (m === "build" ? "plan" : "build"))}
           />

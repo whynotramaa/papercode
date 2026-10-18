@@ -170,7 +170,9 @@ export function CompactionReceipt({
       </Box>
       <Box paddingLeft={3}>
         <Text color={theme.muted}>
-          {summarized} {summarized === 1 ? "message" : "messages"} summarized
+          {summarized === 0
+            ? "old tool output masked"
+            : `${summarized} ${summarized === 1 ? "message" : "messages"} summarized`}
         </Text>
         <Text color={theme.faint}>
           {`  ~${before.toLocaleString()} → ~${after.toLocaleString()} tokens`}

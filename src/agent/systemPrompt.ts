@@ -1,4 +1,7 @@
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
+import { configDir } from "../config/paths.js";
 import { loadSettings } from "../config/settings.js";
 import type { Mode } from "../tools/permissions.js";
 
@@ -36,6 +39,34 @@ export function stripReminders(text: string): string {
   return text.replace(/\n*<system-reminder>[\s\S]*?<\/system-reminder>/g, "");
 }
 
+const CONTEXT_FILES = ["AGENTS.md", "CLAUDE.md"];
+
+function readContextFile(dir: string): { file: string; text: string } | undefined {
+  for (const name of CONTEXT_FILES) {
+    const file = path.join(dir, name);
+    try {
+      return { file, text: fs.readFileSync(file, "utf8").trim() };
+    } catch {}
+  }
+  return undefined;
+}
+
+export function projectContext(cwd: string): { file: string; text: string }[] {
+  const found: { file: string; text: string }[] = [];
+  let dir = path.resolve(cwd);
+  for (;;) {
+    const hit = readContextFile(dir);
+    if (hit) found.unshift(hit);
+    if (fs.existsSync(path.join(dir, ".git"))) break;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  const global = readContextFile(configDir());
+  if (global) found.unshift(global);
+  return found.filter((f) => f.text);
+}
+
 export function buildSystemPrompt(cwd = process.cwd()): string {
   const settings = loadSettings();
 
@@ -47,6 +78,10 @@ export function buildSystemPrompt(cwd = process.cwd()): string {
   ].join("\n");
 
   const parts = [BASE, MODES, `\nEnvironment:\n${env}`];
+
+  for (const { file, text } of projectContext(cwd)) {
+    parts.push(`\nProject instructions from ${file}:\n${text}`);
+  }
 
   if (settings.systemPrompt?.trim()) {
     parts.push(`\nUser instructions (these take priority):\n${settings.systemPrompt.trim()}`);

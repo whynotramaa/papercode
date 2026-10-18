@@ -15,7 +15,15 @@ import {
   parseSkillsJson,
   importSkills,
 } from "./skills.js";
-import { createSession, saveSession, loadSession, listSessions, deleteSession, deriveTitle } from "../sessions/store.js";
+import {
+  appendMessages,
+  createSession,
+  loadSession,
+  listSessions,
+  deleteSession,
+  deriveTitle,
+  sessionMessages,
+} from "../sessions/store.js";
 import type { ChatMessage } from "../agent/messages.js";
 
 let home: string;
@@ -216,13 +224,18 @@ describe("sessions", () => {
     { role: "assistant", content: "Done." },
   ];
 
-  it("saves and reloads a session", () => {
-    const session = { ...createSession(project), messages };
-    saveSession(session);
+  function saved(id?: string, ts?: number) {
+    const session = { ...createSession(project), ...(id ? { id } : {}) };
+    appendMessages(session, messages, ts);
+    return session;
+  }
 
-    const loaded = loadSession(session.id);
-    expect(loaded?.messages).toHaveLength(3);
-    expect(loaded?.cwd).toBe(project);
+  it("saves and reloads a session", () => {
+    const session = saved();
+    const loaded = loadSession(session.id)!;
+    expect(sessionMessages(loaded)).toHaveLength(3);
+    expect(loaded.cwd).toBe(project);
+    expect(loaded.title).toBe("Add a description field to package.json");
   });
 
   it("titles a session from its first user message", () => {
@@ -236,34 +249,26 @@ describe("sessions", () => {
   });
 
   it("lists most-recently-updated first", () => {
-    const a = { ...createSession(project), id: "aaa", messages, updatedAt: 1 };
-    const b = { ...createSession(project), id: "bbb", messages, updatedAt: 2 };
-    saveSession(a);
-    saveSession(b);
-
-    const ids = listSessions().map((s) => s.id);
-    expect(ids).toHaveLength(2);
-    // saveSession stamps updatedAt at write time, so b (written last) leads.
-    expect(ids[0]).toBe("bbb");
+    saved("aaa", 1);
+    saved("bbb", 2);
+    expect(listSessions().map((s) => s.id)).toEqual(["bbb", "aaa"]);
   });
 
-  it("hides empty sessions, which are just abandoned launches", () => {
-    saveSession({ ...createSession(project), messages: [] });
+  it("does not write a file for a session with no messages", () => {
+    createSession(project);
     expect(listSessions()).toEqual([]);
   });
 
   it("deletes a session", () => {
-    const session = { ...createSession(project), messages };
-    saveSession(session);
+    const session = saved();
     expect(deleteSession(session.id)).toBe(true);
     expect(loadSession(session.id)).toBeUndefined();
     expect(listSessions()).toEqual([]);
   });
 
   it("skips a corrupt session file instead of failing the whole list", () => {
-    const good = { ...createSession(project), messages };
-    saveSession(good);
-    fs.writeFileSync(path.join(sessionsDir(), "broken.json"), "{ not json");
+    const good = saved();
+    fs.writeFileSync(path.join(sessionsDir(), "broken.jsonl"), "{ not json");
 
     const listed = listSessions();
     expect(listed).toHaveLength(1);

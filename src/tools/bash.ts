@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { z } from "zod";
 import { screenBashCommand } from "./permissions.js";
-import { truncate, type Tool } from "./types.js";
+import { truncateMiddle, type Tool } from "./types.js";
 
 const schema = z.object({
   command: z.string().min(1).describe("Shell command to run."),
@@ -82,14 +82,20 @@ export const bashTool: Tool<typeof schema> = {
         const body = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n");
         const text = [note, body].filter(Boolean).join("\n\n");
         resolve({
-          content: truncate(text || "(no output)"),
+          content: truncateMiddle(text || "(no output)"),
           isError,
           display: isError ? "Failed" : "Done",
         });
       }
 
-      child.stdout.on("data", (d: Buffer) => (stdout += d.toString()));
-      child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
+      child.stdout.on("data", (d: Buffer) => {
+        stdout += d.toString();
+        ctx.onOutput?.(d.toString());
+      });
+      child.stderr.on("data", (d: Buffer) => {
+        stderr += d.toString();
+        ctx.onOutput?.(d.toString());
+      });
 
       child.on("error", (err) => settle(`Could not run the command: ${err.message}`, true));
 
