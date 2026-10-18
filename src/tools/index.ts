@@ -17,8 +17,10 @@ export function getTool(name: string): AnyTool | undefined {
 }
 
 
-export function toolDefinitions(mode: Mode): OpenAI.Chat.Completions.ChatCompletionFunctionTool[] {
-  return ALL_TOOLS.filter((tool) => checkMode(tool.permission, mode).allow).map((tool) => ({
+let definitions: OpenAI.Chat.Completions.ChatCompletionFunctionTool[] | undefined;
+
+export function toolDefinitions(): OpenAI.Chat.Completions.ChatCompletionFunctionTool[] {
+  definitions ??= ALL_TOOLS.map((tool) => ({
     type: "function",
     function: {
       name: tool.name,
@@ -26,6 +28,11 @@ export function toolDefinitions(mode: Mode): OpenAI.Chat.Completions.ChatComplet
       parameters: zodToJsonSchema(tool.schema, { target: "openAi", $refStrategy: "none" }) as Record<string, unknown>,
     },
   }));
+  return definitions;
+}
+
+export function isReadOnlyTool(name: string): boolean {
+  return getTool(name)?.permission === "read-only";
 }
 
 export type ExecuteOptions = {

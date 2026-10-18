@@ -18,21 +18,25 @@ Guidelines:
 - When you finish, state what changed. Do not narrate every step as you go.
 - If a tool fails, read the error and adapt. Do not retry the identical call.`;
 
-const PLAN_NOTE = `
-CURRENT MODE: PLAN (read-only)
+const MODES = `
+Modes:
+The user switches between BUILD and PLAN with Tab. Each user message ends with a
+<system-reminder> naming the current mode when it changes. In PLAN mode the write,
+edit, and bash tools are refused: investigate, explain, and describe the plan, then
+tell the user to press Tab for BUILD mode. In BUILD mode every tool is available and
+changes may need the user's approval.`;
 
-The write, edit, and bash tools are disabled. You can read, list, glob, and grep.
-Investigate and explain what you would do, but do not attempt to modify anything.
-If the user's request requires changes, describe the plan and tell them to press
-Tab to switch to BUILD mode.`;
+export function modeReminder(mode: Mode): string {
+  return mode === "plan"
+    ? "<system-reminder>Current mode: PLAN (read-only). write, edit, and bash are refused.</system-reminder>"
+    : "<system-reminder>Current mode: BUILD. All tools are available.</system-reminder>";
+}
 
-const BUILD_NOTE = `
-CURRENT MODE: BUILD
+export function stripReminders(text: string): string {
+  return text.replace(/\n*<system-reminder>[\s\S]*?<\/system-reminder>/g, "");
+}
 
-All tools are available. Changes to files and shell commands may require the
-user's approval before they run.`;
-
-export function buildSystemPrompt(mode: Mode, cwd = process.cwd()): string {
+export function buildSystemPrompt(cwd = process.cwd()): string {
   const settings = loadSettings();
 
   const env = [
@@ -42,7 +46,7 @@ export function buildSystemPrompt(mode: Mode, cwd = process.cwd()): string {
     `Date: ${new Date().toISOString().slice(0, 10)}`,
   ].join("\n");
 
-  const parts = [BASE, mode === "plan" ? PLAN_NOTE : BUILD_NOTE, `\nEnvironment:\n${env}`];
+  const parts = [BASE, MODES, `\nEnvironment:\n${env}`];
 
   if (settings.systemPrompt?.trim()) {
     parts.push(`\nUser instructions (these take priority):\n${settings.systemPrompt.trim()}`);

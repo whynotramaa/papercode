@@ -49,3 +49,33 @@ export function isAbort(err: unknown): boolean {
     (err instanceof Error && err.name === "AbortError")
   );
 }
+
+
+export function isRetryable(err: unknown): boolean {
+  if (isAbort(err)) return false;
+  if (err instanceof OpenAI.APIConnectionError) return true;
+  if (err instanceof OpenAI.APIError) {
+    const status = err.status ?? 0;
+    return status === 408 || status === 409 || status === 429 || status >= 500;
+  }
+  return false;
+}
+
+export function retryDelay(err: unknown, attempt: number): number {
+  const header = err instanceof OpenAI.APIError ? err.headers?.get?.("retry-after") : null;
+  const seconds = header ? Number.parseFloat(header) : Number.NaN;
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 60_000);
+  return Math.min(1000 * 2 ** attempt, 30_000) + Math.floor(Math.random() * 250);
+}
+
+export function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener("abort", done, { once: true });
+  });
+}

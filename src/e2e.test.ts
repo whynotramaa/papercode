@@ -90,7 +90,7 @@ async function drive(opts: { mode: "build" | "plan"; approve?: boolean; text: st
     client: createClient(provider()),
     model: "mock-large",
     messages,
-    tools: toolDefinitions(opts.mode),
+    tools: toolDefinitions(),
     signal: controller.signal,
     executeTool: async (call) => {
       const r = await executeTool({
@@ -149,14 +149,12 @@ describe("end-to-end against a mock provider", () => {
     expect(second.messages.some((m) => m.role === "tool")).toBe(true);
   });
 
-  it("does not offer write or bash to the model in plan mode", async () => {
-    scripted = [[{ content: "I would edit config.ts." }]];
+  it("sends the same tool list in plan and build mode so the prefix stays cached", async () => {
+    scripted = [[{ content: "I would edit config.ts." }], [{ content: "ok" }]];
     await drive({ mode: "plan", text: "change config" });
+    await drive({ mode: "build", text: "change config" });
 
-    const names = (received[0]!.tools ?? []).map((t) => t.function.name);
-    expect(names).toContain("read");
-    expect(names).not.toContain("write");
-    expect(names).not.toContain("bash");
+    expect(JSON.stringify(received[0]!.tools)).toBe(JSON.stringify(received[1]!.tools));
   });
 
   it("refuses a write in plan mode even if the model calls it anyway", async () => {
@@ -293,6 +291,7 @@ describe("end-to-end against a mock provider", () => {
         model: "mock-large",
         messages: [{ role: "user", content: "hi" }],
         tools: [],
+        maxRetries: 0,
         signal: new AbortController().signal,
         executeTool: async () => ({ content: "", isError: false }),
         onEvent: () => {},

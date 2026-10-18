@@ -67,22 +67,13 @@ describe("checkMode", () => {
 });
 
 describe("toolDefinitions", () => {
-  it("hides mutating tools from the model in plan mode", () => {
-    const names = toolDefinitions("plan").map((t) => t.function.name);
-    expect(names).toContain("read");
-    expect(names).toContain("grep");
-    expect(names).not.toContain("write");
-    expect(names).not.toContain("edit");
-    expect(names).not.toContain("bash");
-  });
-
-  it("exposes every tool in build mode", () => {
-    const names = toolDefinitions("build").map((t) => t.function.name);
+  it("always exposes every tool so the prompt prefix stays cacheable", () => {
+    const names = toolDefinitions().map((t) => t.function.name);
     expect(names).toEqual(expect.arrayContaining(["read", "write", "edit", "ls", "glob", "grep", "bash"]));
   });
 
   it("emits a JSON Schema object for each tool", () => {
-    for (const def of toolDefinitions("build")) {
+    for (const def of toolDefinitions()) {
       const params = def.function.parameters as { type?: string; properties?: unknown };
       expect(params.type).toBe("object");
       expect(params.properties).toBeTypeOf("object");

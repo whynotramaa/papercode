@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Static, Text, useApp, useInput, useStdout } from "ink";
 import clipboard from "clipboardy";
 
@@ -28,10 +28,12 @@ import { listProviders, getProvider, removeProvider } from "./config/auth.js";
 import { loadSkills } from "./config/skills.js";
 import { createClient, describeError } from "./providers/client.js";
 import { refreshModels } from "./providers/models.js";
+import { detectCompat } from "./providers/compat.js";
+import { contextWindow, modelInfo, refreshCatalog, usageCost } from "./providers/catalog.js";
 import { runTurn } from "./agent/loop.js";
-import { buildSystemPrompt } from "./agent/systemPrompt.js";
+import { buildSystemPrompt, modeReminder, stripReminders } from "./agent/systemPrompt.js";
 import { compact, estimateTokens } from "./agent/compact.js";
-import { executeTool, getTool, toolDefinitions, type AnyTool } from "./tools/index.js";
+import { executeTool, getTool, isReadOnlyTool, toolDefinitions, type AnyTool } from "./tools/index.js";
 import { ApprovalStore, type Mode } from "./tools/permissions.js";
 import type { ChatMessage } from "./agent/messages.js";
 import {
@@ -46,8 +48,6 @@ import {
 
 type View = "chat" | "connect" | "sessions" | "models" | "theme" | "skills" | "help" | "disconnect";
 
-
-const ASSUMED_CONTEXT = 128_000;
 const COMPACT_AT = 0.8;
 
 export function App({ initialCwd }: { initialCwd: string }) {
@@ -70,6 +70,8 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const [epoch, setEpoch] = useState(0);
   const [approval, setApproval] = useState<ApprovalRequest | null>(null);
   const [tokens, setTokens] = useState(0);
+  const [cost, setCost] = useState(0);
+  const [catalogEpoch, setCatalogEpoch] = useState(0);
 
   // History the API sees. A ref because the agent loop mutates it in place and
   // re-rendering on every token would be both slow and pointless.
@@ -79,10 +81,20 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const thinkStart = useRef(0);
   
   const toolPreviews = useRef(new Map<string, string>());
+  const announcedMode = useRef<Mode | null>(null);
 
   const [skills, setSkills] = useState(() => loadSkills(initialCwd));
   const providers = listProviders();
   const activeProvider = settings.activeProvider ? getProvider(settings.activeProvider) : undefined;
+  const compat = useMemo(
+    () => detectCompat(activeProvider?.baseURL ?? "", settings.activeModel ?? ""),
+    [activeProvider?.baseURL, settings.activeModel],
+  );
+  const info = useMemo(
+    () => (settings.activeModel ? modelInfo(compat.kind, settings.activeModel) : undefined),
+    [compat.kind, settings.activeModel, catalogEpoch],
+  );
+  const contextLimit = contextWindow(info);
 
   
   const clearScreen = useCallback(() => {
@@ -100,6 +112,10 @@ export function App({ initialCwd }: { initialCwd: string }) {
   useEffect(() => {
     if (providers.length === 0) setView("connect");
     else if (!activeProvider) setView("connect");
+  }, []);
+
+  useEffect(() => {
+    void refreshCatalog().then(() => setCatalogEpoch((e) => e + 1));
   }, []);
 
   useEffect(() => {
@@ -155,11 +171,16 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
       push({ kind: "user", text });
 
-      const system = buildSystemPrompt(mode, session.cwd);
-      if (messagesRef.current.length === 0) messagesRef.current.push({ role: "system", content: system });
-      else messagesRef.current[0] = { role: "system", content: system };
+      if (messagesRef.current.length === 0) {
+        messagesRef.current.push({ role: "system", content: buildSystemPrompt(session.cwd) });
+      }
 
-      messagesRef.current.push({ role: "user", content: text });
+      const reminder = announcedMode.current === mode ? "" : `\n\n${modeReminder(mode)}`;
+      announcedMode.current = mode;
+      messagesRef.current.push({ role: "user", content: text + reminder });
+      const turnCompat = detectCompat(provider.baseURL, model);
+      const turnInfo = modelInfo(turnCompat.kind, model);
+      let measured = false;
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -172,8 +193,11 @@ export function App({ initialCwd }: { initialCwd: string }) {
         await runTurn({
           client: createClient(provider),
           model,
+          compat: turnCompat,
+          sessionId: session.id,
           messages: messagesRef.current,
-          tools: toolDefinitions(mode),
+          tools: toolDefinitions(),
+          isParallelSafe: isReadOnlyTool,
           signal: controller.signal,
           executeTool: async (call) => {
             const result = await executeTool({
@@ -193,6 +217,16 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
               case "text":
                 setStreaming((t) => t + event.delta);
+                break;
+
+              case "usage":
+                measured = true;
+                setTokens(event.usage.input + event.usage.output);
+                setCost((c) => c + usageCost(turnInfo, event.usage));
+                break;
+
+              case "retry":
+                notice(`${event.message} Retrying in ${Math.ceil(event.delayMs / 1000)}s (attempt ${event.attempt}).`, "info");
                 break;
 
               case "tool_start": {
@@ -233,6 +267,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
                 });
                 if (event.reason === "aborted") notice("Interrupted.", "info");
                 if (event.reason === "max_steps") notice("Stopped after too many tool calls.", "error");
+                if (event.reason === "length") notice("The response hit the model's output limit and was cut off.", "error");
                 break;
             }
           },
@@ -242,20 +277,22 @@ export function App({ initialCwd }: { initialCwd: string }) {
       } finally {
         setBusy(false);
         abortRef.current = null;
-        setTokens(estimateTokens(messagesRef.current));
+        if (!measured) setTokens(estimateTokens(messagesRef.current));
         persist();
       }
     },
-    [mode, notice, persist, push, requestApproval, session.cwd, settings.activeModel, settings.activeProvider],
+    [mode, notice, persist, push, requestApproval, session.cwd, session.id, settings.activeModel, settings.activeProvider],
   );
 
   const startNew = useCallback(() => {
     persist();
     messagesRef.current = [];
+    announcedMode.current = null;
     approvals.current.clear();
     clearScreen();
     setEntries([]);
     setTokens(0);
+    setCost(0);
     setSession(createSession(initialCwd));
     setView("chat");
     notice("Started a new session.", "success");
@@ -267,7 +304,9 @@ export function App({ initialCwd }: { initialCwd: string }) {
       if (!loaded) return notice("Could not load that session.", "error");
 
       messagesRef.current = loaded.messages;
+      announcedMode.current = null;
       approvals.current.clear();
+      setCost(0);
       clearScreen();
       setSession(loaded);
       setTokens(estimateTokens(loaded.messages));
@@ -286,7 +325,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
       for (const m of loaded.messages) {
         if (m.role === "user" && typeof m.content === "string") {
           flush();
-          rebuilt.push({ kind: "user", text: m.content });
+          rebuilt.push({ kind: "user", text: stripReminders(m.content) });
         } else if (m.role === "assistant") {
           if ("tool_calls" in m && m.tool_calls) toolRun += m.tool_calls.length;
           if (typeof m.content === "string" && m.content.trim()) {
@@ -451,7 +490,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
             model={settings.activeModel}
             provider={settings.activeProvider}
             tokens={tokens}
-            contextLimit={ASSUMED_CONTEXT}
+            contextLimit={contextLimit}
           />
         )}
 
@@ -593,7 +632,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
           />
         )}
 
-        {view === "chat" && tokens > ASSUMED_CONTEXT * COMPACT_AT && (
+        {view === "chat" && tokens > contextLimit * COMPACT_AT && (
           <Box paddingX={1}>
             <Text color={THEMES[theme].warning}>Context is filling up — run /compact to summarize and free space.</Text>
           </Box>
