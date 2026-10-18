@@ -41,7 +41,7 @@ export type ExecuteOptions = {
   mode: Mode;
   ctx: ToolContext;
   
-  requestApproval: (tool: AnyTool, args: unknown) => Promise<boolean>;
+  requestApproval: (tool: AnyTool, args: unknown) => Promise<boolean | { denied: string }>;
 };
 
 
@@ -78,12 +78,13 @@ export async function executeTool(opts: ExecuteOptions): Promise<ToolResult> {
   const args = parsed.data;
 
   if (tool.permission !== "read-only") {
-    const approved = await opts.requestApproval(tool, args);
-    if (!approved) {
+    const answer = await opts.requestApproval(tool, args);
+    if (answer !== true) {
+      const why = typeof answer === "object" && answer.denied.trim() ? ` They said: ${answer.denied.trim()}` : "";
       return {
         content:
-          `The user denied permission to run ${tool.name}. Do not retry it. Ask what they would ` +
-          `prefer, or continue with a different approach.`,
+          `The user denied permission to run ${tool.name}.${why} Do not retry the same call. ` +
+          `Adjust based on their feedback, or ask what they would prefer.`,
         isError: true,
       };
     }

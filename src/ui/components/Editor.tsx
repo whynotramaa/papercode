@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../themes/context.js";
 import { useFileSuggestions } from "./useFileSuggestions.js";
@@ -16,7 +16,10 @@ export type EditorProps = {
   onSubmit: (text: string) => void;
   onPalette: (entry: PaletteEntry) => void;
   onToggleMode: () => void;
+  initialText?: string;
 };
+
+const PASTE_LINES = 10;
 
 
 export function paletteQuery(text: string, cursor: number): string | null {
@@ -43,10 +46,11 @@ export function mentionQuery(text: string, cursor: number): string | null {
 
 const VISIBLE_SUGGESTIONS = 8;
 
-export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleMode }: EditorProps) {
+export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleMode, initialText = "" }: EditorProps) {
   const theme = useTheme();
-  const [text, setText] = useState("");
-  const [cursor, setCursor] = useState(0);
+  const [text, setText] = useState(initialText);
+  const [cursor, setCursor] = useState(initialText.length);
+  const pastes = useRef(new Map<string, string>());
   const [selected, setSelected] = useState(0);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
@@ -106,10 +110,20 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
     if (!value) return;
     setHistory((h) => [value, ...h.filter((x) => x !== value)].slice(0, 100));
     reset();
-    onSubmit(value);
+    let expanded = value;
+    for (const [marker, content] of pastes.current) expanded = expanded.split(marker).join(content);
+    pastes.current.clear();
+    onSubmit(expanded);
   }
 
-  function insert(chunk: string) {
+  function insert(raw: string) {
+    let chunk = raw.replace(/\r\n?/g, "\n");
+    const lineCount = chunk.split("\n").length;
+    if (lineCount >= PASTE_LINES) {
+      const marker = `[Pasted #${pastes.current.size + 1} +${lineCount} lines]`;
+      pastes.current.set(marker, chunk);
+      chunk = marker;
+    }
     setText((t) => t.slice(0, cursor) + chunk + t.slice(cursor));
     setCursor((c) => c + chunk.length);
     setSelected(0);
@@ -165,7 +179,7 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
       if (key.escape) {
         // Esc clears the input when there is something to clear; App handles it
         // as "interrupt" while a response is streaming.
-        if (text) reset();
+        if (text && !busy) reset();
         return;
       }
 
@@ -221,7 +235,6 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
 
       if (input && !key.meta) insert(input);
     },
-    { isActive: !busy },
   );
 
   const lines = text.split("\n");
@@ -232,6 +245,11 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
         { key: "↑↓", action: "move" },
         { key: "Enter", action: "accept" },
         { key: "Esc", action: "dismiss" },
+      ]
+    : busy
+    ? [
+        { key: "Enter", action: "queue" },
+        { key: "Esc", action: "interrupt and send queue" },
       ]
     : [
         { key: "Enter", action: "send" },

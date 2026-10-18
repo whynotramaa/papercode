@@ -4,11 +4,14 @@ import { useTheme } from "../themes/context.js";
 import { renderMarkdown } from "../markdown.js";
 
 
+export type ToolItem = { name: string; preview: string; result: string; isError: boolean; display?: string };
+
 export type Entry =
   | { kind: "user"; text: string }
   | { kind: "assistant"; text: string }
   | { kind: "thinking"; text: string; seconds: number }
-  | { kind: "tool"; name: string; preview: string; result: string; isError: boolean }
+  | ({ kind: "tool" } & ToolItem)
+  | { kind: "tools"; items: ToolItem[] }
   | { kind: "compaction"; summarized: number; before: number; after: number }
   | { kind: "notice"; text: string; tone: "info" | "success" | "error" };
 
@@ -41,9 +44,10 @@ export function AssistantMessage({ text }: { text: string }) {
 export function StreamingMessage({ text }: { text: string }) {
   const theme = useTheme();
   if (!text) return null;
+  const fences = text.match(/^\s*```/gm)?.length ?? 0;
   return (
     <Box marginBottom={1} paddingLeft={2}>
-      <Text color={theme.text}>{text}</Text>
+      <Text>{renderMarkdown(fences % 2 ? `${text}\n\`\`\`` : text, theme)}</Text>
     </Box>
   );
 }
@@ -80,24 +84,14 @@ export function ThinkingBlock({
 }
 
 
-export function ToolCall({
-  name,
-  preview,
-  result,
-  isError,
-}: {
-  name: string;
-  preview: string;
-  result: string;
-  isError: boolean;
-}) {
+export function ToolCall({ name, preview, result, isError, display, grouped }: ToolItem & { grouped?: boolean }) {
   const theme = useTheme();
   const lines = result.split("\n").filter((l, i, all) => !(l === "" && i === all.length - 1));
   const shown = lines.slice(0, TOOL_RESULT_LINES);
   const hidden = lines.length - shown.length;
 
   return (
-    <Box flexDirection="column" marginBottom={1}>
+    <Box flexDirection="column" marginBottom={grouped ? 0 : 1}>
       <Box>
         <Text color={theme.faint}>{"  ⁘ "}</Text>
         <Box width={9}>
@@ -108,9 +102,9 @@ export function ToolCall({
         <Box flexGrow={1}>
           <Text color={theme.muted}>{preview}</Text>
         </Box>
-        <Text color={isError ? theme.error : theme.success}>{isError ? "✗ failed" : "✓ done"}</Text>
+        <Text color={isError ? theme.error : theme.muted}>{isError ? "✗ failed" : display ?? "✓ done"}</Text>
       </Box>
-      {result.trim() && (
+      {result.trim() && (isError || name === "bash") && (
         <Box
           flexDirection="column"
           marginLeft={4}
@@ -215,7 +209,15 @@ export function EntryView({ entry, showThinking }: { entry: Entry; showThinking?
     case "thinking":
       return <ThinkingBlock text={entry.text} seconds={entry.seconds} collapsed={!showThinking} />;
     case "tool":
-      return <ToolCall name={entry.name} preview={entry.preview} result={entry.result} isError={entry.isError} />;
+      return <ToolCall {...entry} />;
+    case "tools":
+      return (
+        <Box flexDirection="column" marginBottom={1}>
+          {entry.items.map((item, i) => (
+            <ToolCall key={i} {...item} grouped />
+          ))}
+        </Box>
+      );
     case "compaction":
       return <CompactionReceipt summarized={entry.summarized} before={entry.before} after={entry.after} />;
     case "notice":

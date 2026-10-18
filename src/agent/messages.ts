@@ -12,7 +12,7 @@ export type AgentEvent =
   | { type: "thinking"; delta: string }
   | { type: "text"; delta: string }
   | { type: "tool_start"; id: string; name: string; args: unknown }
-  | { type: "tool_end"; id: string; name: string; result: string; isError: boolean }
+  | { type: "tool_end"; id: string; name: string; result: string; isError: boolean; display?: string }
   | { type: "usage"; usage: Usage }
   | { type: "retry"; attempt: number; delayMs: number; message: string }
   | { type: "turn_end"; reason: "done" | "aborted" | "max_steps" | "length" };

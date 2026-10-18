@@ -8,7 +8,8 @@ import { Editor } from "./ui/components/Editor.js";
 import { Select } from "./ui/components/Select.js";
 import { Spinner } from "./ui/components/Spinner.js";
 import { Compacting } from "./ui/components/Compacting.js";
-import { Header } from "./ui/components/Header.js";
+import { Header, StatusLine } from "./ui/components/Header.js";
+import { proposedDiff } from "./ui/diff.js";
 import { Banner } from "./ui/components/Banner.js";
 import { ApprovalPrompt, type ApprovalRequest } from "./ui/components/ApprovalPrompt.js";
 import {
@@ -17,6 +18,7 @@ import {
   StreamingMessage,
   ThinkingBlock,
   type Entry,
+  type ToolItem,
 } from "./ui/components/Messages.js";
 import { Connect } from "./ui/views/Connect.js";
 import { Help } from "./ui/views/Help.js";
@@ -40,16 +42,21 @@ import {
   appendCompaction,
   appendInfo,
   appendMessages,
+  branchTo,
   createSession,
   deleteSession,
   listSessions,
   loadSession,
+  pathTo,
   relativeTime,
   sessionMessages,
+  treeEntries,
   type Session,
 } from "./sessions/store.js";
 
-type View = "chat" | "connect" | "sessions" | "models" | "theme" | "skills" | "help" | "disconnect";
+type View = "chat" | "connect" | "sessions" | "models" | "theme" | "skills" | "help" | "disconnect" | "tree";
+
+const THINKING_LEVELS = ["off", "low", "medium", "high"] as const;
 
 const COMPACT_AT = 0.8;
 
@@ -102,7 +109,10 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const [approval, setApproval] = useState<ApprovalRequest | null>(null);
   const [tokens, setTokens] = useState(0);
   const [cost, setCost] = useState(0);
+  const [cacheRate, setCacheRate] = useState<number | undefined>(undefined);
   const [catalogEpoch, setCatalogEpoch] = useState(0);
+  const [queued, setQueued] = useState<string[]>([]);
+  const [draft, setDraft] = useState({ text: "", key: 0 });
 
   // History the API sees. A ref because the agent loop mutates it in place and
   // re-rendering on every token would be both slow and pointless.
@@ -112,8 +122,11 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const thinkStart = useRef(0);
   
   const toolPreviews = useRef(new Map<string, string>());
+  const toolBatch = useRef<ToolItem[]>([]);
   const announcedMode = useRef<Mode | null>(null);
   const persistedCount = useRef(0);
+  const queueRef = useRef<string[]>([]);
+  const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
 
   const [skills, setSkills] = useState(() => loadSkills(initialCwd));
   const providers = listProviders();
@@ -176,25 +189,29 @@ export function App({ initialCwd }: { initialCwd: string }) {
   );
 
   const requestApproval = useCallback(
-    (tool: AnyTool, args: unknown): Promise<boolean> => {
+    (tool: AnyTool, args: unknown): Promise<boolean | { denied: string }> => {
       const target = tool.target?.(args);
       if (approvals.current.has(tool.name, tool.permission, target)) return Promise.resolve(true);
 
-      return new Promise<boolean>((resolve) => {
+      return new Promise((resolve) => {
         setApproval({
           tool,
           args,
           target,
           preview: tool.preview?.(args) ?? tool.name,
-          resolve: (choice) => {
+          diff: proposedDiff(tool.name, args, session.cwd),
+          resolve: (choice, reason) => {
             setApproval(null);
-            if (choice === "always") approvals.current.grant(tool.name, target);
-            resolve(choice !== "deny");
+            if (choice === "always") {
+              if (tool.permission === "mutating") approvals.current.grantAllEdits();
+              else approvals.current.grant(tool.name, target);
+            }
+            resolve(choice === "deny" ? { denied: reason ?? "" } : true);
           },
         });
       });
     },
-    [],
+    [session.cwd],
   );
 
   const compactNow = useCallback(
@@ -284,6 +301,19 @@ export function App({ initialCwd }: { initialCwd: string }) {
           tools: toolDefinitions(),
           isParallelSafe: isReadOnlyTool,
           maxSteps: settings.maxSteps,
+          thinking: settings.thinking,
+          steer: () => {
+            const steered = queueRef.current;
+            if (steered.length === 0) return [];
+            queueRef.current = [];
+            setQueued([]);
+            setStreaming((current) => {
+              if (current.trim()) push({ kind: "assistant", text: current });
+              return "";
+            });
+            for (const t of steered) push({ kind: "user", text: t });
+            return steered;
+          },
           signal: controller.signal,
           executeTool: async (call) => {
             const result = await executeTool({
@@ -297,7 +327,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
               },
               requestApproval,
             });
-            return { content: result.content, isError: Boolean(result.isError) };
+            return { content: result.content, isError: Boolean(result.isError), display: result.display };
           },
           onEvent: (event) => {
             switch (event.type) {
@@ -313,6 +343,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
                 measured = event.usage.input + event.usage.output;
                 setTokens(measured);
                 setCost((c) => c + usageCost(turnInfo, event.usage));
+                if (event.usage.input > 0) setCacheRate(event.usage.cacheRead / event.usage.input);
                 break;
 
               case "retry":
@@ -333,14 +364,18 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
               case "tool_end": {
                 setLiveOutput("");
-                push({
-                  kind: "tool",
+                toolBatch.current.push({
                   name: event.name,
                   preview: toolPreviews.current.get(event.id) ?? "",
                   result: event.result,
                   isError: event.isError,
+                  display: event.display,
                 });
                 toolPreviews.current.delete(event.id);
+                if (toolPreviews.current.size > 0) break;
+                const batch = toolBatch.current;
+                toolBatch.current = [];
+                push(batch.length === 1 ? { kind: "tool", ...batch[0]! } : { kind: "tools", items: batch });
                 break;
               }
 
@@ -384,10 +419,17 @@ export function App({ initialCwd }: { initialCwd: string }) {
         abortRef.current = null;
         if (measured === null) setTokens(estimateTokens(messagesRef.current));
         persist();
+        if (queueRef.current.length > 0) {
+          const next = queueRef.current.join("\n\n");
+          queueRef.current = [];
+          setQueued([]);
+          setTimeout(() => void sendRef.current(next), 0);
+        }
       }
     },
-    [compactNow, mode, notice, persist, push, requestApproval, session.cwd, session.id, settings.activeModel, settings.activeProvider, settings.maxSteps],
+    [compactNow, mode, notice, persist, push, requestApproval, session.cwd, session.id, settings.activeModel, settings.activeProvider, settings.maxSteps, settings.thinking],
   );
+  sendRef.current = send;
 
   const startNew = useCallback(() => {
     persist();
@@ -399,6 +441,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
     setEntries([]);
     setTokens(0);
     setCost(0);
+    setCacheRate(undefined);
     setSession(createSession(initialCwd));
     setView("chat");
     notice("Started a new session.", "success");
@@ -414,6 +457,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
       announcedMode.current = null;
       approvals.current.clear();
       setCost(0);
+    setCacheRate(undefined);
       clearScreen();
       setSession(loaded);
       setTokens(estimateTokens(messagesRef.current));
@@ -487,6 +531,9 @@ export function App({ initialCwd }: { initialCwd: string }) {
           return setView("help");
         case "compact":
           return void doCompact(args);
+        case "tree":
+          persist();
+          return setView("tree");
         case "copy":
           return void copyLast();
         case "prompt":
@@ -504,6 +551,11 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
   const submit = useCallback(
     (text: string) => {
+      if (busy) {
+        if (text.startsWith("/")) return notice("Commands wait until the current response finishes.", "info");
+        queueRef.current = [...queueRef.current, text];
+        return setQueued(queueRef.current);
+      }
       const match = text.match(/^\/(\S+)\s*([\s\S]*)$/);
       if (match) {
         const command = resolveCommand(match[1]!);
@@ -518,7 +570,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
       }
       void send(text);
     },
-    [onPalette, send, skills.skills],
+    [busy, notice, onPalette, send, skills.skills],
   );
 
   // Esc, Ctrl+Y and Ctrl+T must work while a response streams, which is exactly
@@ -534,6 +586,48 @@ export function App({ initialCwd }: { initialCwd: string }) {
     },
     { isActive: view === "chat" && !approval },
   );
+
+  const jumpTo = useCallback(
+    (id: string) => {
+      const entry = treeEntries(session).find((e) => e.id === id);
+      if (!entry || entry.type !== "message") return;
+      branchTo(session, entry.parentId);
+      messagesRef.current = sessionMessages(session);
+      persistedCount.current = messagesRef.current.length;
+      announcedMode.current = null;
+      clearScreen();
+      setEntries(transcriptOf(messagesRef.current));
+      setEpoch((e) => e + 1);
+      setTokens(estimateTokens(messagesRef.current));
+      setDraft({ text: typeof entry.message.content === "string" ? stripReminders(entry.message.content) : "", key: Date.now() });
+      setView("chat");
+    },
+    [clearScreen, session],
+  );
+
+  const treeItems = useMemo(() => {
+    if (view !== "tree") return [];
+    const all = treeEntries(session);
+    const byId = new Map(all.map((e) => [e.id, e]));
+    const children = new Map<string | null, number>();
+    for (const e of all) children.set(e.parentId, (children.get(e.parentId) ?? 0) + 1);
+    const onPath = new Set(pathTo(session).map((e) => e.id));
+    return all.flatMap((e) => {
+      if (e.type !== "message" || e.message.role !== "user" || typeof e.message.content !== "string") return [];
+      let depth = 0;
+      for (let p: (typeof all)[number] | undefined = e; p; p = p.parentId ? byId.get(p.parentId) : undefined) {
+        if ((children.get(p.parentId) ?? 0) > 1) depth++;
+      }
+      const text = stripReminders(e.message.content).replace(/\s+/g, " ").trim();
+      return [
+        {
+          value: e.id,
+          label: `${"  ".repeat(depth)}${onPath.has(e.id) ? "●" : "○"} ${relativeTime(e.ts)}`,
+          detail: text.length > 70 ? `${text.slice(0, 67)}...` : text,
+        },
+      ];
+    });
+  }, [session, view]);
 
   const width = stdout?.columns ?? 80;
 
@@ -566,14 +660,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
         {view === "chat" && entries.length === 0 && !busy && <Banner cwd={session.cwd} />}
 
         {view === "chat" && (
-          <Header
-            cwd={session.cwd}
-            mode={mode}
-            model={settings.activeModel}
-            provider={settings.activeProvider}
-            tokens={tokens}
-            contextLimit={contextLimit}
-          />
+<Header cwd={session.cwd} />
         )}
 
         {thinking && <ThinkingBlock text={thinking} seconds={0} collapsed={false} />}
@@ -637,13 +724,27 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
         {view === "models" && (
           <Select
-            title={activeProvider ? `Models · ${activeProvider.name}` : "Models"}
-            items={(activeProvider?.models ?? []).map((m) => ({
-              value: m,
-              label: m,
-              badge: m === settings.activeModel ? "current" : undefined,
-            }))}
+            title={`${activeProvider ? `Models · ${activeProvider.name}` : "Models"}   ✻ thinking ${settings.thinking} ←→`}
+            items={(activeProvider?.models ?? []).map((m) => {
+              const meta = modelInfo(compat.kind, m);
+              const detail = meta
+                ? [
+                    `${Math.round(meta.context / 1000)}k ctx`,
+                    meta.cost ? `$${meta.cost.input}/$${meta.cost.output}` : "",
+                    meta.reasoning ? "reasoning" : "",
+                    meta.vision ? "vision" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : undefined;
+              return { value: m, label: m, detail, badge: m === settings.activeModel ? "current" : undefined };
+            })}
             emptyMessage="No models cached. Run /connect to fetch them."
+            onArrow={(dir) => {
+              const i = THINKING_LEVELS.indexOf(settings.thinking);
+              const next = THINKING_LEVELS[(i + dir + THINKING_LEVELS.length) % THINKING_LEVELS.length]!;
+              setSettings(updateSettings({ thinking: next }));
+            }}
             onCancel={() => setView("chat")}
             onSelect={(model) => {
               setSettings(updateSettings({ activeModel: model }));
@@ -716,8 +817,25 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
         {view === "help" && <Help onClose={() => setView("chat")} />}
 
+        {view === "tree" && (
+          <Select
+            title="Conversation tree"
+            items={treeItems}
+            emptyMessage="No messages in this session yet."
+            hints={[
+              { key: "↑↓", action: "move" },
+              { key: "Enter", action: "branch from here" },
+              { key: "Esc", action: "cancel" },
+            ]}
+            onSelect={jumpTo}
+            onCancel={() => setView("chat")}
+          />
+        )}
+
         {view === "chat" && !approval && (
           <Editor
+            key={draft.key}
+            initialText={draft.text}
             mode={mode}
             cwd={session.cwd}
             skills={skills.skills}
@@ -725,6 +843,29 @@ export function App({ initialCwd }: { initialCwd: string }) {
             onSubmit={submit}
             onPalette={onPalette}
             onToggleMode={() => setMode((m) => (m === "build" ? "plan" : "build"))}
+          />
+        )}
+
+        {view === "chat" && queued.length > 0 && (
+          <Box flexDirection="column" paddingX={1}>
+            {queued.map((q, i) => (
+              <Text key={i} color={THEMES[theme].faint} wrap="truncate-end">
+                {`↳ queued  ${q.replace(/\s+/g, " ")}`}
+              </Text>
+            ))}
+          </Box>
+        )}
+
+        {view === "chat" && (
+          <StatusLine
+            thinking={settings.thinking}
+            mode={mode}
+            model={settings.activeModel}
+            provider={settings.activeProvider}
+            tokens={tokens}
+            contextLimit={contextLimit}
+            cacheRate={cacheRate}
+            cost={cost}
           />
         )}
 

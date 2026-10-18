@@ -40,6 +40,11 @@ function main(): void {
   // home the cursor. The app owns the terminal for as long as it runs.
   process.stdout.write("\x1b[2J\x1b[3J\x1b[H");
 
+  if (process.stdout.isTTY) {
+    const write = process.stdout.write.bind(process.stdout) as (chunk: unknown, ...rest: unknown[]) => boolean;
+    process.stdout.write = ((chunk: unknown, ...rest: unknown[]) =>
+      typeof chunk === "string" ? write(`\x1b[?2026h${chunk}\x1b[?2026l`, ...rest) : write(chunk, ...rest)) as typeof process.stdout.write;
+  }
   const { waitUntilExit } = render(<App initialCwd={process.cwd()} />, { exitOnCtrlC: true });
 
   // Restore the terminal's keyboard mode on every exit path. Skipping this on a

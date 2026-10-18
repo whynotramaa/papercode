@@ -23,6 +23,7 @@ export type SelectProps<T> = {
   onDelete?: (value: T) => void;
   
   onHighlight?: (value: T) => void;
+  onArrow?: (dir: -1 | 1) => void;
   hints?: Hint[];
   emptyMessage?: string;
 };
@@ -42,6 +43,7 @@ export function Select<T>({
   onCancel,
   onDelete,
   onHighlight,
+  onArrow,
   hints,
   emptyMessage = "Nothing here yet.",
 }: SelectProps<T>) {
@@ -89,6 +91,7 @@ export function Select<T>({
       if (filtered.length > 0) move((active + 1) % filtered.length);
       return;
     }
+    if (onArrow && (key.leftArrow || key.rightArrow)) return onArrow(key.leftArrow ? -1 : 1);
     if (key.return) {
       const item = filtered[active];
       if (item) onSelect(item.value);

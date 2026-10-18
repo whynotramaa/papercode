@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { resolveInRoot } from "./permissions.js";
+import { changeSummary } from "./edit.js";
 import type { Tool } from "./types.js";
 
 const schema = z.object({
@@ -25,10 +26,8 @@ export const writeTool: Tool<typeof schema> = {
     if (!resolved.ok) return { content: resolved.reason, isError: true };
 
     try {
-      const existed = await fs
-        .stat(resolved.path)
-        .then((s) => s.isFile())
-        .catch(() => false);
+      const previous = await fs.readFile(resolved.path, "utf8").catch(() => null);
+      const existed = previous !== null;
 
       await ctx.beforeWrite?.(resolved.path);
       await fs.mkdir(path.dirname(resolved.path), { recursive: true });
@@ -37,7 +36,7 @@ export const writeTool: Tool<typeof schema> = {
       const lines = args.content.split("\n").length;
       return {
         content: `${existed ? "Updated" : "Created"} ${args.path} (${lines} lines).`,
-        display: `${existed ? "Updated" : "Created"} ${args.path}`,
+        display: changeSummary(previous ?? "", args.content),
       };
     } catch (err) {
       return { content: `Could not write ${args.path}: ${(err as Error).message}`, isError: true };

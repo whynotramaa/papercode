@@ -10,7 +10,7 @@ import {
 } from "./messages.js";
 import { toWire, type AssistantMeta } from "./wire.js";
 
-export type ToolExecutor = (call: ToolCall) => Promise<{ content: string; isError: boolean }>;
+export type ToolExecutor = (call: ToolCall) => Promise<{ content: string; isError: boolean; display?: string }>;
 
 export type RunTurnOptions = {
   client: OpenAI;
@@ -26,6 +26,7 @@ export type RunTurnOptions = {
   sessionId?: string;
   isParallelSafe?: (name: string) => boolean;
   maxRetries?: number;
+  steer?: () => string[];
 };
 
 export type TurnReason = "done" | "aborted" | "max_steps" | "length";
@@ -171,7 +172,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
       } catch {}
       onEvent({ type: "tool_start", id: call.id, name: call.function.name, args: parsedArgs });
       const result = await executeTool(call);
-      onEvent({ type: "tool_end", id: call.id, name: call.function.name, result: result.content, isError: result.isError });
+      onEvent({ type: "tool_end", id: call.id, name: call.function.name, result: result.content, isError: result.isError, display: result.display });
       return result;
     };
 
@@ -183,6 +184,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
         messages.push({ role: "tool", tool_call_id: call.id, content: results[i]!.content });
       }
       if (signal.aborted) return end("aborted");
+      for (const text of opts.steer?.() ?? []) messages.push({ role: "user", content: text });
       continue;
     }
 
@@ -194,6 +196,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
       const { content } = await run(call);
       messages.push({ role: "tool", tool_call_id: call.id, content });
     }
+    for (const text of opts.steer?.() ?? []) messages.push({ role: "user", content: text });
   }
 
   return end("max_steps");

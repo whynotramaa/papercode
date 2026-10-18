@@ -9,6 +9,7 @@ export type CommandName =
   | "skills"
   | "theme"
   | "compact"
+  | "tree"
   | "prompt"
   | "copy"
   | "help"
@@ -30,6 +31,7 @@ export const COMMANDS: Command[] = [
   { name: "skills", description: "Create and manage custom slash-command prompts" },
   { name: "theme", description: "Change the UI theme", aliases: ["themes"] },
   { name: "compact", description: "Summarize earlier context, optionally with focus: /compact <focus>" },
+  { name: "tree", description: "Jump back to an earlier message and branch from it", aliases: ["fork"] },
   { name: "prompt", description: "Edit the custom system prompt" },
   { name: "copy", description: "Copy the last response to the clipboard" },
   { name: "help", description: "Show keyboard shortcuts and tips" },

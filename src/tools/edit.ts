@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { z } from "zod";
+import { diffLines } from "diff";
 import { resolveInRoot } from "./permissions.js";
 import type { Tool } from "./types.js";
 
@@ -110,6 +111,16 @@ export function applyEdits(source: string, edits: Edit[], label: string): { ok: 
   return { ok: true, text, replaced };
 }
 
+export function changeSummary(before: string, after: string): string {
+  let added = 0;
+  let removed = 0;
+  for (const part of diffLines(before, after)) {
+    if (part.added) added += part.count ?? 0;
+    if (part.removed) removed += part.count ?? 0;
+  }
+  return `+${added} −${removed}`;
+}
+
 export const editTool: Tool<typeof schema> = {
   name: "edit",
   description:
@@ -148,6 +159,6 @@ export const editTool: Tool<typeof schema> = {
     }
 
     const label = result.replaced > 1 ? `${result.replaced} occurrences` : "1 occurrence";
-    return { content: `Edited ${args.path} (${label} replaced).`, display: `Edited ${args.path}` };
+    return { content: `Edited ${args.path} (${label} replaced).`, display: changeSummary(source, result.text) };
   },
 };

@@ -6,7 +6,7 @@ import { render } from "ink-testing-library";
 import { ThemeProvider } from "./themes/context.js";
 import { THEMES, type ThemeName } from "./themes/themes.js";
 import { Select } from "./components/Select.js";
-import { Header, tildify, meter } from "./components/Header.js";
+import { StatusLine, tildify, meter } from "./components/Header.js";
 import { Editor, paletteQuery, mentionQuery } from "./components/Editor.js";
 import { EntryView } from "./components/Messages.js";
 import { Help } from "./views/Help.js";
@@ -125,7 +125,7 @@ describe("commands", () => {
 
   it("lists every command for a bare slash", () => {
     const entries = filterPalette("", []);
-    expect(entries.filter((e) => e.kind === "command")).toHaveLength(12);
+    expect(entries.filter((e) => e.kind === "command")).toHaveLength(13);
   });
 });
 
@@ -296,22 +296,21 @@ describe("Select", () => {
   });
 });
 
-describe("Header", () => {
-  it("shows the cwd, mode, and model", () => {
-    const { lastFrame } = wrap(<Header cwd="/tmp/proj" mode="build" model="gpt-4o" provider="OpenAI" />);
+describe("StatusLine", () => {
+  it("shows the mode and model", () => {
+    const { lastFrame } = wrap(<StatusLine mode="build" model="gpt-4o" provider="OpenAI" />);
     const out = plain(lastFrame() ?? "");
-    expect(out).toContain("proj");
     expect(out).toContain("BUILD");
     expect(out).toContain("gpt-4o");
   });
 
   it("shows plan when in plan mode", () => {
-    const { lastFrame } = wrap(<Header cwd="/tmp/proj" mode="plan" />);
+    const { lastFrame } = wrap(<StatusLine mode="plan" />);
     expect(plain(lastFrame() ?? "")).toContain("PLAN");
   });
 
   it("shows the context percentage", () => {
-    const { lastFrame } = wrap(<Header cwd="/tmp/p" mode="build" tokens={50} contextLimit={100} />);
+    const { lastFrame } = wrap(<StatusLine mode="build" tokens={50} contextLimit={100} />);
     expect(plain(lastFrame() ?? "")).toContain("50%");
   });
 });
@@ -396,11 +395,10 @@ describe("Editor", () => {
     expect(onSubmit).toHaveBeenCalledWith("what is /help");
   });
 
-  it("ignores input while busy, so keystrokes cannot queue mid-response", async () => {
+  it("still submits while busy so the app can queue the message", async () => {
     const onSubmit = vi.fn();
-    const { lastFrame } = await press(<Editor {...base} busy onSubmit={onSubmit} />, ["hello", KEY.enter]);
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(plain(lastFrame() ?? "")).not.toContain("hello");
+    await press(<Editor {...base} busy onSubmit={onSubmit} />, ["hello", KEY.enter]);
+    expect(onSubmit).toHaveBeenCalledWith("hello");
   });
 
   it("does not submit an empty buffer", async () => {
@@ -668,7 +666,7 @@ describe("Editor input clearing", () => {
 
 describe("every theme renders", () => {
   it.each(Object.keys(THEMES) as ThemeName[])("%s", (name) => {
-    const { lastFrame } = wrap(<Header cwd="/tmp/p" mode="build" model="m" />, name);
+    const { lastFrame } = wrap(<StatusLine mode="build" model="m" />, name);
     expect(plain(lastFrame() ?? "")).toContain("BUILD");
   });
 });
