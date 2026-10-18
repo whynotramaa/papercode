@@ -39,7 +39,7 @@ export type AnyTool = {
   target?: (args: any) => string | undefined;
   preview?: (args: any) => string;
   run: (args: any, ctx: ToolContext) => Promise<ToolResult>;
-  
+  parameters?: Record<string, unknown>;
 };
 
 

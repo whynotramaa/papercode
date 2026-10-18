@@ -125,7 +125,7 @@ describe("commands", () => {
 
   it("lists every command for a bare slash", () => {
     const entries = filterPalette("", []);
-    expect(entries.filter((e) => e.kind === "command")).toHaveLength(13);
+    expect(entries.filter((e) => e.kind === "command")).toHaveLength(14);
   });
 });
 

@@ -25,7 +25,7 @@ export function ApprovalPrompt({ request }: { request: ApprovalRequest }) {
 
   const options: { choice: ApprovalChoice; label: string }[] = [
     { choice: "once", label: "Yes" },
-    { choice: "always", label: danger ? "Always allow this command" : "All edits this session" },
+    { choice: "always", label: danger ? (request.tool.name === "bash" ? "Always allow this command" : "Always allow this tool") : "All edits this session" },
     { choice: "deny", label: "No, tell it why" },
   ];
 
@@ -58,7 +58,7 @@ export function ApprovalPrompt({ request }: { request: ApprovalRequest }) {
     <Box flexDirection="column" marginTop={1}>
       <Box>
         <Text color={danger ? theme.warning : theme.primary} bold>
-          {danger ? "bash" : request.tool.name}
+          {request.tool.name}
         </Text>
         <Text color={theme.muted}>{"  "}{diff ? diff.path : danger ? "wants to run a command" : request.preview}</Text>
         {diff && (
@@ -75,7 +75,7 @@ export function ApprovalPrompt({ request }: { request: ApprovalRequest }) {
 
       {reason === null ? (
         <Box marginTop={1}>
-          <Text color={theme.text}>{danger ? "Run this command?" : "Apply this change?"}</Text>
+          <Text color={theme.text}>{diff ? "Apply this change?" : "Run this?"}</Text>
           {options.map((opt, i) => (
             <Text key={opt.choice}>
               {"  "}

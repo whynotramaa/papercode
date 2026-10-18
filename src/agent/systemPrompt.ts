@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { configDir } from "../config/paths.js";
+import { loadSkills } from "../config/skills.js";
 import { loadSettings } from "../config/settings.js";
 import type { Mode } from "../tools/permissions.js";
 
@@ -81,6 +82,14 @@ export function buildSystemPrompt(cwd = process.cwd()): string {
 
   for (const { file, text } of projectContext(cwd)) {
     parts.push(`\nProject instructions from ${file}:\n${text}`);
+  }
+
+  const skills = loadSkills(cwd).skills.filter((s) => s.description);
+  if (skills.length > 0) {
+    parts.push(
+      `\nAvailable skills. When a task matches one, call the skill tool with its name before starting:\n` +
+        skills.map((s) => `- ${s.name}: ${s.description}`).join("\n"),
+    );
   }
 
   if (settings.systemPrompt?.trim()) {

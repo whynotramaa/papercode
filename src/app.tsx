@@ -32,12 +32,15 @@ import { createClient, describeError, isAbort, isContextOverflow } from "./provi
 import { refreshModels } from "./providers/models.js";
 import { detectCompat } from "./providers/compat.js";
 import { contextWindow, modelInfo, refreshCatalog, usageCost } from "./providers/catalog.js";
+import fs from "node:fs";
 import { runTurn } from "./agent/loop.js";
+import { withImages } from "./agent/images.js";
 import { buildSystemPrompt, modeReminder, stripReminders } from "./agent/systemPrompt.js";
 import { compact, estimateTokens, maskToolResults, shouldCompact, SUMMARY_MARKER } from "./agent/compact.js";
-import { executeTool, getTool, isReadOnlyTool, toolDefinitions, type AnyTool } from "./tools/index.js";
+import { executeTool, getTool, isReadOnlyTool, registerTools, toolDefinitions, type AnyTool } from "./tools/index.js";
+import { connectMcp } from "./tools/mcp.js";
 import { ApprovalStore, type Mode } from "./tools/permissions.js";
-import type { ChatMessage } from "./agent/messages.js";
+import { textOf, type ChatMessage } from "./agent/messages.js";
 import {
   appendCompaction,
   appendInfo,
@@ -71,10 +74,11 @@ function transcriptOf(messages: ChatMessage[]): Entry[] {
   };
 
   for (const m of messages) {
-    if (m.role === "user" && typeof m.content === "string") {
+    if (m.role === "user") {
       flush();
-      if (m.content.startsWith(SUMMARY_MARKER)) rebuilt.push({ kind: "notice", text: "Earlier conversation summarized.", tone: "info" });
-      else rebuilt.push({ kind: "user", text: stripReminders(m.content) });
+      const text = textOf(m);
+      if (text.startsWith(SUMMARY_MARKER)) rebuilt.push({ kind: "notice", text: "Earlier conversation summarized.", tone: "info" });
+      else rebuilt.push({ kind: "user", text: stripReminders(text) });
     } else if (m.role === "assistant") {
       if ("tool_calls" in m && m.tool_calls) toolRun += m.tool_calls.length;
       if (typeof m.content === "string" && m.content.trim()) {
@@ -126,6 +130,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const announcedMode = useRef<Mode | null>(null);
   const persistedCount = useRef(0);
   const queueRef = useRef<string[]>([]);
+  const snapshots = useRef<Map<string, string | null>[]>([]);
   const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
 
   const [skills, setSkills] = useState(() => loadSkills(initialCwd));
@@ -161,6 +166,10 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
   useEffect(() => {
     void refreshCatalog().then(() => setCatalogEpoch((e) => e + 1));
+    void connectMcp(initialCwd).then(({ tools, errors }) => {
+      registerTools(tools);
+      for (const error of errors) notice(error, "error");
+    });
   }, []);
 
   useEffect(() => {
@@ -278,7 +287,9 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
       const reminder = announcedMode.current === mode ? "" : `\n\n${modeReminder(mode)}`;
       announcedMode.current = mode;
-      messagesRef.current.push({ role: "user", content: text + reminder });
+      messagesRef.current.push({ role: "user", content: withImages(text + reminder, session.cwd) } as ChatMessage);
+      const snapshot = new Map<string, string | null>();
+      snapshots.current.push(snapshot);
       const turnCompat = detectCompat(provider.baseURL, model);
       const turnInfo = modelInfo(turnCompat.kind, model);
       const window = contextWindow(turnInfo);
@@ -324,6 +335,10 @@ export function App({ initialCwd }: { initialCwd: string }) {
                 root: session.cwd,
                 signal: controller.signal,
                 onOutput: (chunk) => setLiveOutput((o) => (o + chunk).slice(-4000)),
+                beforeWrite: (file) => {
+                  if (snapshot.has(file)) return;
+                  snapshot.set(file, fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null);
+                },
               },
               requestApproval,
             });
@@ -419,6 +434,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
         abortRef.current = null;
         if (measured === null) setTokens(estimateTokens(messagesRef.current));
         persist();
+        if (snapshot.size === 0) snapshots.current = snapshots.current.filter((s) => s !== snapshot);
         if (queueRef.current.length > 0) {
           const next = queueRef.current.join("\n\n");
           queueRef.current = [];
@@ -534,6 +550,15 @@ export function App({ initialCwd }: { initialCwd: string }) {
         case "tree":
           persist();
           return setView("tree");
+        case "undo": {
+          const last = snapshots.current.pop();
+          if (!last) return notice("Nothing to undo.", "info");
+          for (const [file, content] of last) {
+            if (content === null) fs.rmSync(file, { force: true });
+            else fs.writeFileSync(file, content);
+          }
+          return notice(`Restored ${last.size} file${last.size === 1 ? "" : "s"}.`, "success");
+        }
         case "copy":
           return void copyLast();
         case "prompt":

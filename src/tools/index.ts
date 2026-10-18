@@ -7,10 +7,17 @@ import { lsTool } from "./ls.js";
 import { globTool } from "./glob.js";
 import { grepTool } from "./grep.js";
 import { bashTool } from "./bash.js";
+import { skillTool } from "./skill.js";
+import { runHooks } from "./hooks.js";
 import { checkMode, type Mode } from "./permissions.js";
 import type { AnyTool, Tool, ToolContext, ToolResult } from "./types.js";
 
-export const ALL_TOOLS: AnyTool[] = [readTool, lsTool, globTool, grepTool, editTool, writeTool, bashTool];
+export const ALL_TOOLS: AnyTool[] = [readTool, lsTool, globTool, grepTool, editTool, writeTool, bashTool, skillTool];
+
+export function registerTools(tools: AnyTool[]): void {
+  for (const tool of tools) if (!getTool(tool.name)) ALL_TOOLS.push(tool);
+  definitions = undefined;
+}
 
 export function getTool(name: string): AnyTool | undefined {
   return ALL_TOOLS.find((t) => t.name === name);
@@ -25,7 +32,8 @@ export function toolDefinitions(): OpenAI.Chat.Completions.ChatCompletionFunctio
     function: {
       name: tool.name,
       description: tool.description,
-      parameters: zodToJsonSchema(tool.schema, { target: "openAi", $refStrategy: "none" }) as Record<string, unknown>,
+      parameters:
+        tool.parameters ?? (zodToJsonSchema(tool.schema, { target: "openAi", $refStrategy: "none" }) as Record<string, unknown>),
     },
   }));
   return definitions;
@@ -77,6 +85,9 @@ export async function executeTool(opts: ExecuteOptions): Promise<ToolResult> {
 
   const args = parsed.data;
 
+  const pre = await runHooks("preToolUse", { tool: tool.name, args }, opts.ctx.root);
+  if (pre.blocked) return { content: `A hook blocked ${tool.name}: ${pre.blocked}`, isError: true };
+
   if (tool.permission !== "read-only") {
     const answer = await opts.requestApproval(tool, args);
     if (answer !== true) {
@@ -90,11 +101,14 @@ export async function executeTool(opts: ExecuteOptions): Promise<ToolResult> {
     }
   }
 
+  let result: ToolResult;
   try {
-    return await tool.run(args, opts.ctx);
+    result = await tool.run(args, opts.ctx);
   } catch (err) {
-    return { content: `${tool.name} failed: ${(err as Error).message}`, isError: true };
+    result = { content: `${tool.name} failed: ${(err as Error).message}`, isError: true };
   }
+  const post = await runHooks("postToolUse", { tool: tool.name, args, result: result.content }, opts.ctx.root);
+  return post.output ? { ...result, content: `${result.content}\n\n[hook]\n${post.output}` } : result;
 }
 
 export type { AnyTool, Tool, ToolContext, ToolResult };

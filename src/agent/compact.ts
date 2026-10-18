@@ -223,7 +223,9 @@ export function estimateTokens(messages: ChatMessage[]): number {
   for (const m of messages) {
     const content = (m as { content?: unknown }).content;
     if (typeof content === "string") chars += content.length;
-    else if (Array.isArray(content)) chars += JSON.stringify(content).length;
+    else if (Array.isArray(content)) {
+      for (const part of content as { type?: string; text?: string }[]) chars += part.type === "image_url" ? 4800 : (part.text?.length ?? 0);
+    }
     const calls = (m as { tool_calls?: unknown }).tool_calls;
     if (calls) chars += JSON.stringify(calls).length;
   }

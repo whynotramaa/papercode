@@ -12,6 +12,13 @@ const SettingsSchema = z.object({
   
   showThinking: z.boolean().catch(false).default(false),
   maxSteps: z.number().int().positive().catch(100).default(100),
+  hooks: z
+    .object({
+      preToolUse: z.array(z.object({ matcher: z.string().optional(), command: z.string() })).optional(),
+      postToolUse: z.array(z.object({ matcher: z.string().optional(), command: z.string() })).optional(),
+    })
+    .optional()
+    .catch(undefined),
   thinking: z.enum(["off", "low", "medium", "high"]).catch("off").default("off"),
 });
 

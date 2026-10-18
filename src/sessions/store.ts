@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { sessionsDir, ensureDir } from "../config/paths.js";
-import type { ChatMessage } from "../agent/messages.js";
+import { textOf, type ChatMessage } from "../agent/messages.js";
 import { stripReminders } from "../agent/systemPrompt.js";
 
 export type SessionEntry =
@@ -48,7 +48,7 @@ export function createSession(cwd = process.cwd()): Session {
 
 export function deriveTitle(messages: ChatMessage[]): string {
   const first = messages.find((m) => m.role === "user");
-  const content = typeof first?.content === "string" ? stripReminders(first.content) : "";
+  const content = first ? stripReminders(textOf(first)) : "";
   const line = content.replace(/\s+/g, " ").trim();
   if (!line) return "New session";
   return line.length > 60 ? `${line.slice(0, 57)}...` : line;

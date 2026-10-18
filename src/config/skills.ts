@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
-import { globalSkillsPath, projectSkillsPath } from "./paths.js";
+import { parse as parseYaml } from "yaml";
+import { configDir, globalSkillsPath, projectSkillsPath } from "./paths.js";
 import { readJson, writeJson } from "./jsonFile.js";
 
 export const SkillSchema = z.object({
@@ -11,7 +14,7 @@ export const SkillSchema = z.object({
   prompt: z.string().min(1),
 });
 
-export type Skill = z.infer<typeof SkillSchema> & { source: "global" | "project" };
+export type Skill = z.infer<typeof SkillSchema> & { source: "global" | "project"; path?: string };
 
 
 export const RESERVED_NAMES = [
@@ -25,6 +28,9 @@ export const RESERVED_NAMES = [
   "logout",
   "theme",
   "compact",
+  "tree",
+  "fork",
+  "undo",
   "skills",
   "prompt",
   "copy",
@@ -65,6 +71,48 @@ function loadFile(file: string, source: "global" | "project", errors: string[]):
       continue;
     }
     out.push({ ...parsed.data, source });
+  }
+  return out;
+}
+
+function loadSkillDir(dir: string, source: "global" | "project", errors: string[]): Skill[] {
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return [];
+  }
+  const out: Skill[] = [];
+  for (const name of names) {
+    const file = path.join(dir, name, "SKILL.md");
+    let text: string;
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    let meta: { name?: unknown; description?: unknown } = {};
+    try {
+      meta = (match ? parseYaml(match[1]!) : {}) ?? {};
+    } catch (err) {
+      errors.push(`${file}: invalid frontmatter (${(err as Error).message})`);
+      continue;
+    }
+    const parsed = SkillSchema.safeParse({
+      name: typeof meta.name === "string" ? meta.name : name,
+      description: typeof meta.description === "string" ? meta.description : "",
+      prompt: (match ? match[2]! : text).trim(),
+    });
+    if (!parsed.success) {
+      errors.push(`${file}: ${parsed.error.issues.map((issue) => issue.message).join("; ")}`);
+      continue;
+    }
+    if (isReserved(parsed.data.name)) {
+      errors.push(`${file}: "${parsed.data.name}" is a built-in command name`);
+      continue;
+    }
+    out.push({ ...parsed.data, source, path: file });
   }
   return out;
 }
@@ -146,8 +194,15 @@ export function importSkills(
 
 export function loadSkills(cwd = process.cwd()): SkillLoadResult {
   const errors: string[] = [];
-  const global = loadFile(globalSkillsPath(), "global", errors);
-  const project = loadFile(projectSkillsPath(cwd), "project", errors);
+  const global = [
+    ...loadFile(globalSkillsPath(), "global", errors),
+    ...loadSkillDir(path.join(configDir(), "skills"), "global", errors),
+  ];
+  const project = [
+    ...loadFile(projectSkillsPath(cwd), "project", errors),
+    ...loadSkillDir(path.join(cwd, ".agents", "skills"), "project", errors),
+    ...loadSkillDir(path.join(cwd, ".papercode", "skills"), "project", errors),
+  ];
 
   const byName = new Map<string, Skill>();
   for (const skill of global) byName.set(skill.name.toLowerCase(), skill);
