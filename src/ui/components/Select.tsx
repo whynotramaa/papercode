@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../themes/context.js";
-import { useViewport, listCapacity } from "../useViewport.js";
+import { useViewport, listCapacity, useElementWidth } from "../useViewport.js";
 import { Hints, type Hint } from "./Hints.js";
 import { Panel } from "./Panel.js";
 
@@ -48,7 +48,8 @@ export function Select<T>({
   emptyMessage = "Nothing here yet.",
 }: SelectProps<T>) {
   const theme = useTheme();
-  const { rows } = useViewport();
+  const { rows, columns } = useViewport();
+  const list = useElementWidth();
   const [index, setIndex] = useState(0);
   const [query, setQuery] = useState("");
 
@@ -64,7 +65,7 @@ export function Select<T>({
   // so the frame never reaches the last row. A frame that exactly fills the
   // terminal still scrolls it by one line, which is all it takes for Ink to
   // lose track of what it has to erase and start stacking copies of the panel.
-  const capacity = listCapacity(rows, 12);
+  const capacity = Math.min(7, listCapacity(rows, 16));
   const active = Math.min(index, Math.max(0, filtered.length - 1));
 
   function move(next: number) {
@@ -122,10 +123,8 @@ export function Select<T>({
   const start =
     filtered.length <= capacity ? 0 : Math.max(0, Math.min(active - half, filtered.length - capacity));
   const visible = filtered.slice(start, start + capacity);
-  const above = start;
-  const below = filtered.length - start - visible.length;
-
-  const labelWidth = Math.min(28, Math.max(8, ...items.map((i) => i.label.length)));
+  const badgeWidth = Math.min(9, Math.max(0, ...items.map((item) => item.badge?.length ?? 0)));
+  const labelWidth = Math.min(32, Math.max(4, Math.floor(((list.width || columns - 12) - (badgeWidth ? badgeWidth + 2 : 0) - 4) * 0.5)), Math.max(8, ...items.map((i) => i.label.length)));
 
   const counter =
     filtered.length === items.length
@@ -134,48 +133,38 @@ export function Select<T>({
 
   return (
     <Panel title={title} corner={items.length > 0 ? counter : undefined}>
-      <Box>
-        <Text color={query ? theme.primary : theme.faint}>{"⌕ "}</Text>
-        {query ? (
-          <>
-            <Text color={theme.text}>{query}</Text>
-            <Text color={theme.primary}>▏</Text>
-          </>
-        ) : (
-          <Text color={theme.faint}>type to search</Text>
-        )}
+      <Box height={1} flexShrink={0}>
+        <Text wrap="truncate-end" color={query ? theme.text : theme.faint}>
+          <Text color={theme.primary}>{"/ "}</Text>{query || "type to search"}{query && <Text color={theme.primary}>▏</Text>}
+        </Text>
       </Box>
 
-      <Box flexDirection="column" marginTop={1}>
+      <Box ref={list.ref} flexDirection="column" marginTop={1}>
         {items.length === 0 ? (
           <Text color={theme.faint}>{emptyMessage}</Text>
         ) : filtered.length === 0 ? (
           <Text color={theme.faint}>No matches for “{query}”.</Text>
         ) : (
           <>
-            {above > 0 && <Text color={theme.faint}>{`  ↑ ${above} more`}</Text>}
             {visible.map((item, i) => {
               const real = start + i;
               const isActive = real === active;
               return (
-                <Box key={real}>
-                  <Text color={isActive ? theme.primary : theme.faint}>{isActive ? "❯ " : "  "}</Text>
-                  <Box width={labelWidth + 2}>
-                    <Text color={isActive ? theme.text : theme.muted} bold={isActive}>
+                <Box key={real} height={1} flexShrink={0}>
+                  <Box width={2} flexShrink={0}><Text color={isActive ? theme.primary : theme.faint}>{isActive ? ">" : " "}</Text></Box>
+                  <Box width={labelWidth} flexShrink={0} marginRight={2}>
+                    <Text color={isActive ? theme.text : theme.muted} bold={isActive} wrap="truncate-end">
                       {item.label}
                     </Text>
                   </Box>
-                  {item.detail && <Text color={theme.faint}>{item.detail}</Text>}
-                  {item.badge && (
-                    <Text color={theme.success}>
-                      {"  "}
-                      {item.badge}
-                    </Text>
+                  <Box flexGrow={1} minWidth={0}><Text color={theme.faint} wrap="truncate-end">{item.detail ?? " "}</Text></Box>
+                  {badgeWidth > 0 && (
+                    <Box flexShrink={0} width={badgeWidth} marginLeft={2}><Text color={theme.success} wrap="truncate-end">{item.badge ?? " "}</Text></Box>
                   )}
                 </Box>
               );
             })}
-            {below > 0 && <Text color={theme.faint}>{`  ↓ ${below} more`}</Text>}
+            {filtered.length > capacity && <Text color={theme.faint}>{`${start + 1}-${start + visible.length} of ${filtered.length} · ${filtered.length - visible.length} more`}</Text>}
           </>
         )}
       </Box>

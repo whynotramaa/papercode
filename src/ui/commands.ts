@@ -11,6 +11,7 @@ export type CommandName =
   | "compact"
   | "tree"
   | "undo"
+  | "mcp"
   | "prompt"
   | "copy"
   | "help"
@@ -34,6 +35,7 @@ export const COMMANDS: Command[] = [
   { name: "compact", description: "Summarize earlier context, optionally with focus: /compact <focus>" },
   { name: "tree", description: "Jump back to an earlier message and branch from it", aliases: ["fork"] },
   { name: "undo", description: "Restore files changed by the last response" },
+  { name: "mcp", description: "Show connected MCP servers and their tools" },
   { name: "prompt", description: "Edit the custom system prompt" },
   { name: "copy", description: "Copy the last response to the clipboard" },
   { name: "help", description: "Show keyboard shortcuts and tips" },

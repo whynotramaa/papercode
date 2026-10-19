@@ -6,6 +6,7 @@ export type ToolContext = {
   signal: AbortSignal;
   onOutput?: (chunk: string) => void;
   beforeWrite?: (absPath: string) => void | Promise<void>;
+  readHistory?: (id: string, offset?: number, limit?: number) => string;
 };
 
 export type ToolResult = {

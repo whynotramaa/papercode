@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { settingsPath } from "./paths.js";
 import { readJson, writeJson } from "./jsonFile.js";
-import { THEME_NAMES, DEFAULT_THEME } from "../ui/themes/themes.js";
+import { THEME_NAMES, DEFAULT_THEME, migrateTheme } from "../ui/themes/themes.js";
 
 const SettingsSchema = z.object({
   activeProvider: z.string().optional(),
   activeModel: z.string().optional(),
-  theme: z.enum(THEME_NAMES).catch(DEFAULT_THEME).default(DEFAULT_THEME),
+  theme: z.preprocess(migrateTheme, z.enum(THEME_NAMES).catch(DEFAULT_THEME).default(DEFAULT_THEME)),
   
   systemPrompt: z.string().optional(),
   

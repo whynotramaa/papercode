@@ -101,15 +101,22 @@ describe("normalizeBaseURL", () => {
 });
 
 describe("settings", () => {
+  it("migrates old theme names without resetting provider settings", () => {
+    for (const [old, theme] of [["carbon", "graphite"], ["nord", "midnight"], ["ember", "signal"]]) {
+      fs.writeFileSync(path.join(home, "settings.json"), JSON.stringify({ theme: old, activeProvider: "saved", activeModel: "m" }));
+      expect(loadSettings()).toMatchObject({ theme, activeProvider: "saved", activeModel: "m" });
+    }
+  });
+
   it("defaults the theme and persists an update", () => {
-    expect(loadSettings().theme).toBe("carbon");
-    updateSettings({ theme: "nord", activeModel: "m" });
-    expect(loadSettings()).toMatchObject({ theme: "nord", activeModel: "m" });
+    expect(loadSettings().theme).toBe("signal");
+    updateSettings({ theme: "midnight", activeModel: "m" });
+    expect(loadSettings()).toMatchObject({ theme: "midnight", activeModel: "m" });
   });
 
   it("falls back to the default theme when the stored one no longer exists", () => {
     fs.writeFileSync(path.join(home, "settings.json"), JSON.stringify({ theme: "theme-that-was-removed" }));
-    expect(loadSettings().theme).toBe("carbon");
+    expect(loadSettings().theme).toBe("signal");
   });
 });
 

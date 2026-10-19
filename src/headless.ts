@@ -8,6 +8,8 @@ import { withImages } from "./agent/images.js";
 import { executeTool, isReadOnlyTool, registerTools, toolDefinitions } from "./tools/index.js";
 import { closeMcp, connectMcp } from "./tools/mcp.js";
 import type { ChatMessage } from "./agent/messages.js";
+import { createHistory } from "./agent/history.js";
+import { refreshCatalog } from "./providers/catalog.js";
 
 export async function runHeadless(prompt: string, opts: { json: boolean; yes: boolean }): Promise<number> {
   const settings = loadSettings();
@@ -19,6 +21,8 @@ export async function runHeadless(prompt: string, opts: { json: boolean; yes: bo
   }
 
   const cwd = process.cwd();
+  await refreshCatalog();
+  const history = createHistory();
   const mcp = await connectMcp(cwd);
   registerTools(mcp.tools);
   for (const error of mcp.errors) console.error(error);
@@ -38,6 +42,7 @@ export async function runHeadless(prompt: string, opts: { json: boolean; yes: bo
       model,
       compat: detectCompat(provider.baseURL, model),
       messages,
+      context: { history },
       tools: toolDefinitions(),
       isParallelSafe: isReadOnlyTool,
       maxSteps: settings.maxSteps,
@@ -48,7 +53,7 @@ export async function runHeadless(prompt: string, opts: { json: boolean; yes: bo
           name: call.function.name,
           rawArgs: call.function.arguments,
           mode: "build",
-          ctx: { root: cwd, signal: controller.signal },
+          ctx: { root: cwd, signal: controller.signal, readHistory: history.read },
           requestApproval: async (tool) =>
             opts.yes || tool.permission === "mutating" ? true : { denied: "Headless mode runs commands only with --yes." },
         });

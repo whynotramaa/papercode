@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { describeError, isAbort, isRetryable, retryDelay, sleep } from "../providers/client.js";
+import { describeError, isAbort, isContextOverflow, isRetryable, retryDelay, sleep } from "../providers/client.js";
 import { GENERIC_COMPAT, thinkingParams, type Compat, type ThinkingLevel } from "../providers/compat.js";
 import {
   abortedToolResult,
@@ -9,6 +9,9 @@ import {
   type Usage,
 } from "./messages.js";
 import { toWire, type AssistantMeta } from "./wire.js";
+import { modelInfo } from "../providers/catalog.js";
+import { compactionBudget, estimateRequestTokens, estimateTokens, prepareContext, type ContextOptions } from "./compact.js";
+import { createHistory, type HistoryMeta } from "./history.js";
 
 export type ToolExecutor = (call: ToolCall) => Promise<{ content: string; isError: boolean; display?: string }>;
 
@@ -27,6 +30,7 @@ export type RunTurnOptions = {
   isParallelSafe?: (name: string) => boolean;
   maxRetries?: number;
   steer?: () => string[];
+  context?: ContextOptions;
 };
 
 export type TurnReason = "done" | "aborted" | "max_steps" | "length";
@@ -64,6 +68,19 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
   const { client, model, messages, tools, executeTool, signal, onEvent, sessionId } = opts;
   const maxSteps = opts.maxSteps ?? 25;
   const compat = opts.compat ?? GENERIC_COMPAT;
+  const context = { info: modelInfo(compat.kind, model), ...opts.context };
+  const history = context.history ?? createHistory();
+  let measured: { tokens: number; estimate: number } | undefined;
+  const prepare = async (force = false) => {
+    history.capture(messages);
+    const estimate = estimateRequestTokens(messages, tools);
+    const changed = await prepareContext({
+      ...context, history, client, model, messages, tools, compat, signal, force,
+      tokens: measured ? measured.tokens + Math.max(0, estimate - measured.estimate) : undefined,
+    });
+    if (changed) measured = undefined;
+    return changed;
+  };
 
   const end = (reason: TurnReason): TurnResult => {
     onEvent({ type: "turn_end", reason });
@@ -72,17 +89,22 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
 
   for (let step = 0; step < maxSteps; step++) {
     if (signal.aborted) return end("aborted");
+    await prepare();
+    if (signal.aborted) return end("aborted");
 
     let text = "";
     let reasoning = "";
     let finish: string | null = null;
     let usage: Usage | undefined;
     const partials = new Map<number, PartialToolCall>();
+    let recoveredOverflow = false;
+    let inputEstimate = estimateRequestTokens(messages, tools);
 
     const body = {
       model,
       messages: toWire(messages, compat, model),
       stream: true,
+      ...(compat.kind === "openai" ? { max_completion_tokens: compactionBudget(context.info).response } : { max_tokens: compactionBudget(context.info).response }),
       ...(compat.usageInStreaming ? { stream_options: { include_usage: true } } : {}),
       ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
       ...thinkingParams(compat, opts.thinking),
@@ -132,6 +154,13 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
           if (text) messages.push({ role: "assistant", content: text });
           return end("aborted");
         }
+        if (!emitted && !recoveredOverflow && isContextOverflow(err)) {
+          recoveredOverflow = true;
+          if (!(await prepare(true))) throw err;
+          body.messages = toWire(messages, compat, model);
+          inputEstimate = estimateRequestTokens(messages, tools);
+          continue;
+        }
         if (emitted || attempt >= (opts.maxRetries ?? MAX_RETRIES) || !isRetryable(err)) throw err;
         const delayMs = retryDelay(err, attempt);
         onEvent({ type: "retry", attempt: attempt + 1, delayMs, message: describeError(err) });
@@ -164,6 +193,10 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
 
     const meta: AssistantMeta = { _model: model, ...(reasoning ? { _reasoning: reasoning } : {}) };
     messages.push({ role: "assistant", content: text || null, tool_calls: calls, ...meta } as ChatMessage);
+    if (usage?.input) measured = {
+      tokens: usage.input + usage.output,
+      estimate: inputEstimate + estimateTokens([messages.at(-1)!]),
+    };
 
     const run = async (call: ToolCall) => {
       let parsedArgs: unknown = {};
@@ -181,7 +214,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
     if (parallel) {
       const results = await Promise.all(calls.map(run));
       for (const [i, call] of calls.entries()) {
-        messages.push({ role: "tool", tool_call_id: call.id, content: results[i]!.content });
+        messages.push({ role: "tool", tool_call_id: call.id, content: results[i]!.content, _isError: results[i]!.isError } as ChatMessage & HistoryMeta);
       }
       if (signal.aborted) return end("aborted");
       for (const text of opts.steer?.() ?? []) messages.push({ role: "user", content: text });
@@ -193,8 +226,8 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnResult> {
         for (const pending of calls.slice(i)) messages.push(abortedToolResult(pending.id));
         return end("aborted");
       }
-      const { content } = await run(call);
-      messages.push({ role: "tool", tool_call_id: call.id, content });
+      const { content, isError } = await run(call);
+      messages.push({ role: "tool", tool_call_id: call.id, content, _isError: isError } as ChatMessage & HistoryMeta);
     }
     for (const text of opts.steer?.() ?? []) messages.push({ role: "user", content: text });
   }

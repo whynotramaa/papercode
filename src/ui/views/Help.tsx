@@ -13,6 +13,8 @@ const SHORTCUTS: [string, string][] = [
   ["Ctrl+J", "newline (everywhere)"],
   ["Tab", "toggle build / plan"],
   ["Esc", "clear input, or interrupt a response"],
+  ["PgUp / PgDn", "scroll conversation or long panels"],
+  ["Ctrl+B", "show / hide context panel"],
   ["Ctrl+Y", "copy the last response"],
   ["Ctrl+T", "show / hide thinking blocks"],
   ["@", "file mention"],
@@ -23,7 +25,7 @@ const SHORTCUTS: [string, string][] = [
 
 export function Help({ onClose }: { onClose: () => void }) {
   const theme = useTheme();
-  useInput(() => onClose());
+  useInput((_input, key) => { if (!key.pageUp && !key.pageDown) onClose(); });
 
   return (
     <Panel title="Help" corner={`papercode v${VERSION}`}>
@@ -65,7 +67,7 @@ export function Help({ onClose }: { onClose: () => void }) {
         </Box>
       )}
 
-      <Hints hints={[{ key: "any key", action: "close" }]} />
+      <Hints hints={[{ key: "Esc", action: "close" }]} />
     </Panel>
   );
 }

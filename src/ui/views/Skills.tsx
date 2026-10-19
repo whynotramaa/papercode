@@ -211,7 +211,7 @@ function SkillDetail({ skill, onBack, onDelete }: { skill: Skill; onBack: () => 
       ) : (
         <Text color={theme.faint}>(no description)</Text>
       )}
-      <Box marginTop={1} paddingX={1} borderStyle="round" borderColor={theme.border}>
+      <Box marginTop={1} paddingX={1} borderStyle="single" borderColor={theme.border}>
         <Text color={theme.text}>{skill.prompt}</Text>
       </Box>
       <Hints

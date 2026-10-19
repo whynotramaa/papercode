@@ -31,6 +31,7 @@ export const RESERVED_NAMES = [
   "tree",
   "fork",
   "undo",
+  "mcp",
   "skills",
   "prompt",
   "copy",

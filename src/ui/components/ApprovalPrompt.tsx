@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
+import { useViewport } from "../useViewport.js";
 import { useTheme } from "../themes/context.js";
 import { Hints } from "./Hints.js";
 import { DiffView } from "./DiffView.js";
@@ -19,6 +20,7 @@ export type ApprovalRequest = {
 
 export function ApprovalPrompt({ request }: { request: ApprovalRequest }) {
   const theme = useTheme();
+  const { rows } = useViewport();
   const [selected, setSelected] = useState(0);
   const [reason, setReason] = useState<string | null>(null);
   const danger = request.tool.permission === "dangerous";
@@ -69,17 +71,17 @@ export function ApprovalPrompt({ request }: { request: ApprovalRequest }) {
         )}
       </Box>
 
-      <Box marginTop={1} borderStyle="round" borderColor={danger ? theme.warning : theme.border} paddingX={1}>
-        {diff && diff.lines.length > 0 ? <DiffView diff={diff} /> : <Text color={theme.code}>{request.preview}</Text>}
+      <Box marginTop={1} borderStyle="single" borderColor={danger ? theme.warning : theme.border} paddingX={1}>
+        {diff && diff.lines.length > 0 ? <DiffView diff={diff} maxLines={Math.max(3, rows - 17)} /> : <Text color={theme.code}>{request.preview}</Text>}
       </Box>
 
       {reason === null ? (
-        <Box marginTop={1}>
+        <Box marginTop={1} flexDirection="column">
           <Text color={theme.text}>{diff ? "Apply this change?" : "Run this?"}</Text>
           {options.map((opt, i) => (
             <Text key={opt.choice}>
               {"  "}
-              <Text color={i === selected ? theme.primary : theme.faint}>{i === selected ? "› " : "  "}</Text>
+              <Text color={i === selected ? theme.primary : theme.faint}>{i === selected ? "> " : "  "}</Text>
               <Text color={i === selected ? theme.text : theme.muted} bold={i === selected}>
                 {opt.label}
               </Text>

@@ -63,8 +63,8 @@ export function TextPrompt({ label, hint, initialValue = "", mask, onSubmit, onC
 
       <Box
         marginTop={1}
-        borderStyle="round"
-        borderColor={error ? theme.error : theme.border}
+        borderStyle="single"
+        borderColor={error ? theme.error : theme.primary}
         paddingX={1}
       >
         <Text color={theme.primary} bold>

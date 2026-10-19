@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, Static, Text, useApp, useInput, useStdout } from "ink";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Box, Text, useApp, useInput } from "ink";
 import clipboard from "clipboardy";
 
 import { ThemeProvider } from "./ui/themes/context.js";
@@ -10,11 +10,13 @@ import { Spinner } from "./ui/components/Spinner.js";
 import { Compacting } from "./ui/components/Compacting.js";
 import { Header, StatusLine } from "./ui/components/Header.js";
 import { proposedDiff } from "./ui/diff.js";
+import { useViewport } from "./ui/useViewport.js";
+import { ContextPanel } from "./ui/components/ContextPanel.js";
+import { ScrollArea } from "./ui/components/ScrollArea.js";
 import { Banner } from "./ui/components/Banner.js";
 import { ApprovalPrompt, type ApprovalRequest } from "./ui/components/ApprovalPrompt.js";
 import {
   EntryView,
-  ResponseFooter,
   StreamingMessage,
   ThinkingBlock,
   type Entry,
@@ -28,7 +30,7 @@ import { resolveCommand, type PaletteEntry } from "./ui/commands.js";
 import { loadSettings, updateSettings } from "./config/settings.js";
 import { listProviders, getProvider, removeProvider } from "./config/auth.js";
 import { loadSkills } from "./config/skills.js";
-import { createClient, describeError, isAbort, isContextOverflow } from "./providers/client.js";
+import { createClient, describeError, isAbort } from "./providers/client.js";
 import { refreshModels } from "./providers/models.js";
 import { detectCompat } from "./providers/compat.js";
 import { contextWindow, modelInfo, refreshCatalog, usageCost } from "./providers/catalog.js";
@@ -36,9 +38,10 @@ import fs from "node:fs";
 import { runTurn } from "./agent/loop.js";
 import { withImages } from "./agent/images.js";
 import { buildSystemPrompt, modeReminder, stripReminders } from "./agent/systemPrompt.js";
-import { compact, estimateTokens, maskToolResults, shouldCompact, SUMMARY_MARKER } from "./agent/compact.js";
+import { estimateTokens, prepareContext, SUMMARY_MARKER, type ContextOptions } from "./agent/compact.js";
+import { createHistory } from "./agent/history.js";
 import { executeTool, getTool, isReadOnlyTool, registerTools, toolDefinitions, type AnyTool } from "./tools/index.js";
-import { connectMcp } from "./tools/mcp.js";
+import { connectMcp, mcpServers } from "./tools/mcp.js";
 import { ApprovalStore, type Mode } from "./tools/permissions.js";
 import { textOf, type ChatMessage } from "./agent/messages.js";
 import {
@@ -91,12 +94,17 @@ function transcriptOf(messages: ChatMessage[]): Entry[] {
   return rebuilt;
 }
 
-export function App({ initialCwd }: { initialCwd: string }) {
+const MemoEntry = React.memo(EntryView);
+
+export function App({ initialCwd, onThemeChange }: { initialCwd: string; onThemeChange?: (name: ThemeName) => void }) {
   const { exit } = useApp();
-  const { stdout } = useStdout();
+  const { columns, rows } = useViewport();
+  const [completing, setCompleting] = useState(false);
+  const [showContext, setShowContext] = useState(true);
 
   const [settings, setSettings] = useState(() => loadSettings());
   const [theme, setThemeName] = useState<ThemeName>(settings.theme);
+  useLayoutEffect(() => onThemeChange?.(theme), [theme, onThemeChange]);
   const [view, setView] = useState<View>("chat");
   const [mode, setMode] = useState<Mode>("build");
 
@@ -115,12 +123,14 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const [cost, setCost] = useState(0);
   const [cacheRate, setCacheRate] = useState<number | undefined>(undefined);
   const [catalogEpoch, setCatalogEpoch] = useState(0);
+  const [mcp, setMcp] = useState<{ tools: AnyTool[]; errors: string[] } | null>(null);
   const [queued, setQueued] = useState<string[]>([]);
   const [draft, setDraft] = useState({ text: "", key: 0 });
 
   // History the API sees. A ref because the agent loop mutates it in place and
   // re-rendering on every token would be both slow and pointless.
   const messagesRef = useRef<ChatMessage[]>([]);
+  const history = useMemo(() => createHistory(session.entries), [session]);
   const abortRef = useRef<AbortController | null>(null);
   const approvals = useRef(new ApprovalStore());
   const thinkStart = useRef(0);
@@ -147,9 +157,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
   const contextLimit = contextWindow(info);
 
   
-  const clearScreen = useCallback(() => {
-    stdout?.write("\x1b[2J\x1b[3J\x1b[H");
-  }, [stdout]);
+  const clearScreen = useCallback(() => setEpoch((value) => value + 1), []);
 
   const push = useCallback((entry: Entry) => setEntries((e) => [...e, entry]), []);
   const notice = useCallback(
@@ -168,6 +176,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
     void refreshCatalog().then(() => setCatalogEpoch((e) => e + 1));
     void connectMcp(initialCwd).then(({ tools, errors }) => {
       registerTools(tools);
+      setMcp({ tools, errors });
       for (const error of errors) notice(error, "error");
     });
   }, []);
@@ -187,15 +196,6 @@ export function App({ initialCwd }: { initialCwd: string }) {
     persistedCount.current = messagesRef.current.length;
   }, [session, settings.activeProvider, settings.activeModel]);
 
-  const replaceHistory = useCallback(
-    (messages: ChatMessage[], summarized: number) => {
-      persist();
-      messagesRef.current = messages;
-      appendCompaction(session, messages, summarized);
-      persistedCount.current = messages.length;
-    },
-    [persist, session],
-  );
 
   const requestApproval = useCallback(
     (tool: AnyTool, args: unknown): Promise<boolean | { denied: string }> => {
@@ -223,50 +223,38 @@ export function App({ initialCwd }: { initialCwd: string }) {
     [session.cwd],
   );
 
+  const context = useMemo<ContextOptions>(() => ({
+    history,
+    beforeCompact: persist,
+    onCompacting: setCompacting,
+    onCompact: (result) => {
+      appendCompaction(session, result.messages, result.summarized);
+      persistedCount.current = result.messages.length;
+      setTokens(result.after);
+      push({ kind: "compaction", summarized: result.summarized, before: result.before, after: result.after });
+    },
+  }), [history, persist, push, session]);
+
   const compactNow = useCallback(
-    async (opts: { focus?: string; auto?: boolean; signal?: AbortSignal }): Promise<boolean> => {
+    async (opts: { focus?: string; signal?: AbortSignal }): Promise<boolean> => {
       const provider = settings.activeProvider ? getProvider(settings.activeProvider) : undefined;
       const model = settings.activeModel;
       if (!provider || !model) {
         notice("No model selected.", "error");
         return false;
       }
-      const before = estimateTokens(messagesRef.current);
-
-      if (opts.auto) {
-        const window = contextWindow(modelInfo(detectCompat(provider.baseURL, model).kind, model));
-        const masked = maskToolResults(messagesRef.current);
-        if (masked.saved > 0 && before - masked.saved < window * 0.6) {
-          replaceHistory(masked.messages, 0);
-          setTokens(before - masked.saved);
-          push({ kind: "compaction", summarized: 0, before, after: before - masked.saved });
-          return true;
-        }
-      }
-
-      setCompacting(true);
-      try {
-        const result = await compact({
-          client: createClient(provider),
-          model,
-          messages: messagesRef.current,
-          focus: opts.focus,
-          signal: opts.signal,
-        });
-        if (result.summarized === 0) {
-          if (!opts.auto) notice("Nothing to compact.", "info");
-          return false;
-        }
-        replaceHistory(result.messages, result.summarized);
-        const after = estimateTokens(result.messages);
-        setTokens(after);
-        push({ kind: "compaction", summarized: result.summarized, before, after });
-        return true;
-      } finally {
-        setCompacting(false);
-      }
+      const compat = detectCompat(provider.baseURL, model);
+      const changed = await prepareContext({
+        ...context,
+        client: createClient(provider), model, compat,
+        info: modelInfo(compat.kind, model),
+        messages: messagesRef.current, tools: toolDefinitions(),
+        force: true, focus: opts.focus, signal: opts.signal,
+      });
+      if (!changed) notice("Nothing to compact.", "info");
+      return changed;
     },
-    [notice, push, replaceHistory, settings.activeModel, settings.activeProvider],
+    [context, notice, settings.activeModel, settings.activeProvider],
   );
 
   const send = useCallback(
@@ -292,7 +280,6 @@ export function App({ initialCwd }: { initialCwd: string }) {
       snapshots.current.push(snapshot);
       const turnCompat = detectCompat(provider.baseURL, model);
       const turnInfo = modelInfo(turnCompat.kind, model);
-      const window = contextWindow(turnInfo);
       let measured: number | null = null;
 
       const controller = new AbortController();
@@ -309,6 +296,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
           compat: turnCompat,
           sessionId: session.id,
           messages: messagesRef.current,
+          context,
           tools: toolDefinitions(),
           isParallelSafe: isReadOnlyTool,
           maxSteps: settings.maxSteps,
@@ -333,6 +321,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
               mode,
               ctx: {
                 root: session.cwd,
+                readHistory: history.read,
                 signal: controller.signal,
                 onOutput: (chunk) => setLiveOutput((o) => (o + chunk).slice(-4000)),
                 beforeWrite: (file) => {
@@ -415,18 +404,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
         });
 
       try {
-        try {
-          await go();
-        } catch (err) {
-          if (!isContextOverflow(err) || controller.signal.aborted) throw err;
-          notice("The context window overflowed. Compacting and retrying.", "info");
-          if (!(await compactNow({ signal: controller.signal }))) throw err;
-          await go();
-        }
-        const used = measured ?? estimateTokens(messagesRef.current);
-        if (!controller.signal.aborted && shouldCompact(used, window)) {
-          await compactNow({ auto: true, signal: controller.signal });
-        }
+        await go();
       } catch (err) {
         if (!isAbort(err)) notice(describeError(err), "error");
       } finally {
@@ -443,7 +421,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
         }
       }
     },
-    [compactNow, mode, notice, persist, push, requestApproval, session.cwd, session.id, settings.activeModel, settings.activeProvider, settings.maxSteps, settings.thinking],
+    [context, history, mode, notice, persist, push, requestApproval, session.cwd, session.id, settings.activeModel, settings.activeProvider, settings.maxSteps, settings.thinking],
   );
   sendRef.current = send;
 
@@ -523,6 +501,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
   const onPalette = useCallback(
     (entry: PaletteEntry, args = "") => {
+      if (busy) return notice("Commands wait until the current response finishes.", "info");
       if (entry.kind === "skill") {
         void send(entry.skill.prompt);
         return;
@@ -550,6 +529,18 @@ export function App({ initialCwd }: { initialCwd: string }) {
         case "tree":
           persist();
           return setView("tree");
+        case "mcp": {
+          const names = Object.keys(mcpServers(initialCwd));
+          if (names.length === 0) return notice("No MCP servers configured. Add them to ~/.papercode/mcp.json or .mcp.json.", "info");
+          if (!mcp) return notice("MCP servers are still connecting.", "info");
+          const lines = names.map((name) => {
+            const failed = mcp.errors.find((e) => e.startsWith(`MCP server ${name}:`));
+            if (failed) return `✗ ${failed.slice(11)}`;
+            const tools = mcp.tools.filter((t) => t.name.startsWith(`mcp__${name}__`)).map((t) => t.name.split("__")[2]);
+            return `✓ ${name} · ${tools.length} tools: ${tools.join(", ")}`;
+          });
+          return notice(lines.join("\n"), "info");
+        }
         case "undo": {
           const last = snapshots.current.pop();
           if (!last) return notice("Nothing to undo.", "info");
@@ -571,7 +562,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
           return exit();
       }
     },
-    [copyLast, doCompact, exit, notice, persist, send, startNew],
+    [busy, copyLast, doCompact, exit, initialCwd, mcp, notice, persist, send, startNew],
   );
 
   const submit = useCallback(
@@ -598,14 +589,14 @@ export function App({ initialCwd }: { initialCwd: string }) {
     [busy, notice, onPalette, send, skills.skills],
   );
 
-  // Esc, Ctrl+Y and Ctrl+T must work while a response streams, which is exactly
-  // when the editor's own input handler is disabled.
+  // Global actions stay available while the editor accepts queued messages.
   useInput(
     (input, key) => {
       if (key.escape && busy) {
         abortRef.current?.abort();
         return;
       }
+      if (key.ctrl && input === "b") return setShowContext((value) => !value);
       if (key.ctrl && input === "y") return void copyLast();
       if (key.ctrl && input === "t") return toggleThinking();
     },
@@ -654,61 +645,52 @@ export function App({ initialCwd }: { initialCwd: string }) {
     });
   }, [session, view]);
 
-  const width = stdout?.columns ?? 80;
-
-  const last = entries[entries.length - 1];
-  const hasResponse =
-    last?.kind === "assistant" || (last?.kind === "thinking" && entries.some((e) => e.kind === "assistant"));
-  const showFooter = view === "chat" && !busy && !approval && !streaming && hasResponse;
+  const rail = showContext && columns >= 110 && rows >= 26;
+  const paneWidth = columns - (rail ? 29 : 0);
+  const composerWidth = Math.max(20, Math.min(88, paneWidth - 4));
+  const welcome = !busy && !entries.some((entry) => ["user", "assistant", "tool", "tools", "thinking"].includes(entry.kind));
 
   return (
     <ThemeProvider name={theme}>
-      <Box flexDirection="column" width={width} paddingX={1}>
-        {/* Static keeps finished output out of the re-render path; Ink writes it
-            once and the terminal owns the scrollback from then on.
-
-            It is append-only: it remembers how many items it has emitted and
-            renders only items.slice(thatCount). Replacing the list — which is
-            exactly what /new and resuming a session do — would otherwise render
-            nothing, leaving the previous session's transcript on screen under
-            the new session's name. Keying it to the session id forces a remount
-            so the counter resets. The key also carries the thinking toggle, so
-            Ctrl+T can reprint the transcript expanded or collapsed, and the
-            epoch, which /compact bumps when it swaps the transcript for its
-            receipt. */}
-        <Static key={`${session.id}:${epoch}:${settings.showThinking}`} items={entries}>
-          {(entry, i) => <EntryView key={i} entry={entry} showThinking={settings.showThinking} />}
-        </Static>
-
-        {showFooter && <ResponseFooter thinkingShown={settings.showThinking} />}
-
-        {view === "chat" && entries.length === 0 && !busy && <Banner cwd={session.cwd} />}
-
-        {view === "chat" && (
-<Header cwd={session.cwd} />
-        )}
-
-        {thinking && <ThinkingBlock text={thinking} seconds={0} collapsed={false} />}
-        {streaming && <StreamingMessage text={streaming} />}
-
-        {liveOutput && !approval && (
-          <Box flexDirection="column" paddingLeft={4}>
-            {liveOutput
-              .trimEnd()
-              .split("\n")
-              .slice(-5)
-              .map((line, i) => (
-                <Text key={i} color={THEMES[theme].faint} wrap="truncate-end">
-                  {line || " "}
-                </Text>
-              ))}
-          </Box>
-        )}
-
-        {approval && <ApprovalPrompt request={approval} />}
-
-        {busy && !approval && (compacting ? <Compacting elapsed={elapsed} /> : <Spinner elapsed={elapsed} tokens={tokens} />)}
-
+      <Box flexDirection="column" width={columns} height={Math.max(8, rows - 1)} overflow="hidden">
+        <Header cwd={session.cwd} busy={busy} />
+        <Box flexGrow={1} minHeight={0}>
+          <Box flexGrow={1} minWidth={0} width={paneWidth} paddingX={2} flexDirection="column">
+            {view === "chat" ? (
+              <Box flexGrow={1} minHeight={0} flexDirection="column" justifyContent={welcome ? "center" : "flex-start"}>
+                {approval ? (
+                  <ScrollArea key="approval" follow={false}><ApprovalPrompt request={approval} /></ScrollArea>
+                ) : (
+                  <>
+                    {welcome ? (
+                      <Box alignSelf="center" width={composerWidth} flexDirection="column">
+                        <Box display={completing ? "none" : "flex"} flexDirection="column"><Banner compact={rows < 22} /></Box>
+                        {entries.slice(-2).map((entry, i) => <MemoEntry key={i} entry={entry} />)}
+                      </Box>
+                    ) : (
+                      <ScrollArea key={`${session.id}:${epoch}`}>
+                        {entries.map((entry, i) => <MemoEntry key={i} entry={entry} showThinking={settings.showThinking} />)}
+                        {thinking && <ThinkingBlock text={thinking} seconds={0} collapsed={!settings.showThinking} />}
+                        {streaming && <StreamingMessage text={streaming} />}
+                        {liveOutput && <Box flexDirection="column" paddingLeft={2}>{liveOutput.trimEnd().split("\n").slice(-4).map((line, i) => <Text key={i} color={THEMES[theme].faint} wrap="truncate-end">{line || " "}</Text>)}</Box>}
+                      </ScrollArea>
+                    )}
+                    {busy && <Box flexShrink={0} paddingY={rows >= 26 ? 1 : 0}>{compacting ? <Compacting elapsed={elapsed} /> : <Spinner elapsed={elapsed} tokens={tokens} />}</Box>}
+                    <Box alignSelf="center" width={welcome ? composerWidth : "100%"} flexDirection="column" flexShrink={0}>
+                      <Editor key={draft.key} initialText={draft.text} mode={mode} cwd={session.cwd} skills={skills.skills} busy={busy}
+                        width={welcome ? composerWidth : paneWidth - 4} onSuggestionsChange={setCompleting} onSubmit={submit} onPalette={onPalette}
+                        onToggleMode={() => setMode((m) => m === "build" ? "plan" : "build")} />
+                      {queued.length > 0 && <Text color={THEMES[theme].accent} wrap="truncate-end">↳ {queued.length} queued · {queued.at(-1)?.replace(/\s+/g, " ")}</Text>}
+                      {tokens > contextLimit * COMPACT_AT && <Text color={THEMES[theme].warning} wrap="truncate-end">Context is filling up · /compact to summarize</Text>}
+                    </Box>
+                  </>
+                )}
+              </Box>
+            ) : (
+              <Box flexGrow={1} minHeight={0} justifyContent="center" flexDirection="column" alignItems="center">
+                <Box width={Math.max(20, Math.min(80, paneWidth - 4))} height={Math.max(4, rows - 5)} flexDirection="column" minHeight={0}>
+                  <ScrollArea key={view} follow={false}>
+                    <Box flexDirection="column" paddingTop={Math.max(0, Math.floor((rows - 27) / 2))}>
         {view === "connect" && (
           <Connect
             onCancel={() => setView(providers.length > 0 ? "chat" : "connect")}
@@ -749,7 +731,13 @@ export function App({ initialCwd }: { initialCwd: string }) {
 
         {view === "models" && (
           <Select
-            title={`${activeProvider ? `Models · ${activeProvider.name}` : "Models"}   ✻ thinking ${settings.thinking} ←→`}
+            title={`Models · thinking ${settings.thinking}`}
+            hints={[
+              { key: "↑↓", action: "move" },
+              { key: "Enter", action: "select" },
+              { key: "Esc", action: "cancel" },
+              { key: "←→", action: "thinking" },
+            ]}
             items={(activeProvider?.models ?? []).map((m) => {
               const meta = modelInfo(compat.kind, m);
               const detail = meta
@@ -785,7 +773,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
             items={(Object.keys(THEMES) as ThemeName[]).map((name) => ({
               value: name,
               label: THEMES[name].label,
-              detail: THEMES[name].dark ? "dark" : "light",
+              detail: THEMES[name].description,
               badge: name === settings.theme ? "current" : undefined,
             }))}
             hints={[
@@ -812,7 +800,7 @@ export function App({ initialCwd }: { initialCwd: string }) {
             items={providers.map((p) => ({ value: p.name, label: p.name, detail: p.baseURL }))}
             emptyMessage="No providers configured."
             hints={[
-              { key: "Enter", action: "remove provider and its stored key" },
+              { key: "Enter", action: "remove provider" },
               { key: "Esc", action: "cancel" },
             ]}
             onCancel={() => setView("chat")}
@@ -857,48 +845,19 @@ export function App({ initialCwd }: { initialCwd: string }) {
           />
         )}
 
-        {view === "chat" && !approval && (
-          <Editor
-            key={draft.key}
-            initialText={draft.text}
-            mode={mode}
-            cwd={session.cwd}
-            skills={skills.skills}
-            busy={busy}
-            onSubmit={submit}
-            onPalette={onPalette}
-            onToggleMode={() => setMode((m) => (m === "build" ? "plan" : "build"))}
-          />
-        )}
-
-        {view === "chat" && queued.length > 0 && (
-          <Box flexDirection="column" paddingX={1}>
-            {queued.map((q, i) => (
-              <Text key={i} color={THEMES[theme].faint} wrap="truncate-end">
-                {`↳ queued  ${q.replace(/\s+/g, " ")}`}
-              </Text>
-            ))}
+                    </Box>
+                  </ScrollArea>
+                </Box>
+              </Box>
+            )}
           </Box>
-        )}
-
-        {view === "chat" && (
-          <StatusLine
-            thinking={settings.thinking}
-            mode={mode}
-            model={settings.activeModel}
-            provider={settings.activeProvider}
-            tokens={tokens}
-            contextLimit={contextLimit}
-            cacheRate={cacheRate}
-            cost={cost}
-          />
-        )}
-
-        {view === "chat" && tokens > contextLimit * COMPACT_AT && (
-          <Box paddingX={1}>
-            <Text color={THEMES[theme].warning}>Context is filling up — run /compact to summarize and free space.</Text>
-          </Box>
-        )}
+          {rail && <ContextPanel cwd={session.cwd} title={session.title} model={settings.activeModel} provider={settings.activeProvider}
+            tokens={tokens} contextLimit={contextLimit} cost={cost} cacheRate={cacheRate} thinking={settings.thinking}
+            skills={skills.skills.length} servers={Object.keys(mcpServers(initialCwd)).length} mcpErrors={mcp?.errors.length ?? 0}
+            tools={toolDefinitions().length} messages={messagesRef.current} compact={rows < 34} queued={queued.length} />}
+        </Box>
+        <StatusLine thinking={settings.thinking} mode={mode} model={settings.activeModel} provider={settings.activeProvider}
+          tokens={tokens} contextLimit={contextLimit} cacheRate={cacheRate} cost={cost} />
       </Box>
     </ThemeProvider>
   );

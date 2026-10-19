@@ -1,4 +1,7 @@
 import React from "react";
+import chalk from "chalk";
+import { loadSettings } from "./config/settings.js";
+import { THEMES, type ThemeName } from "./ui/themes/themes.js";
 import { render } from "ink";
 import { App } from "./app.js";
 import { enableKittyKeyboard, disableKittyKeyboard } from "./ui/keyboard.js";
@@ -59,20 +62,29 @@ function main(): void {
   ensureDir(configDir());
   enableKittyKeyboard();
 
-  // Take the whole screen from the first frame: clear it, wipe scrollback,
-  // home the cursor. The app owns the terminal for as long as it runs.
-  process.stdout.write("\x1b[2J\x1b[3J\x1b[H");
-
+  const write = process.stdout.write.bind(process.stdout);
+  let theme = loadSettings().theme;
+  const setTheme = (name: ThemeName) => { theme = name; };
+  write("\x1b[?1049h\x1b[H");
   if (process.stdout.isTTY) {
-    const write = process.stdout.write.bind(process.stdout) as (chunk: unknown, ...rest: unknown[]) => boolean;
-    process.stdout.write = ((chunk: unknown, ...rest: unknown[]) =>
-      typeof chunk === "string" ? write(`\x1b[?2026h${chunk}\x1b[?2026l`, ...rest) : write(chunk, ...rest)) as typeof process.stdout.write;
+    process.stdout.write = ((chunk: unknown, ...rest: unknown[]) => {
+      if (typeof chunk !== "string") return (write as Function)(chunk, ...rest);
+      const palette = THEMES[theme];
+      // Ink 5 has no background surfaces. Paint each frame, including erased line tails.
+      const painted = chalk.bgHex(palette.background).hex(palette.text)(chunk.replace(/\n/g, "\x1b[K\n"));
+      return (write as Function)(`\x1b[?2026h${painted}\x1b[?2026l`, ...rest);
+    }) as typeof process.stdout.write;
   }
-  const { waitUntilExit } = render(<App initialCwd={process.cwd()} />, { exitOnCtrlC: true });
+  const { waitUntilExit } = render(<App initialCwd={process.cwd()} onThemeChange={setTheme} />, { exitOnCtrlC: true });
 
-  // Restore the terminal's keyboard mode on every exit path. Skipping this on a
-  // crash or a signal leaves the user's shell with broken key handling.
-  const restore = () => disableKittyKeyboard();
+  let restored = false;
+  const restore = () => {
+    if (restored) return;
+    restored = true;
+    process.stdout.write = write;
+    disableKittyKeyboard();
+    write("\x1b[0m\x1b[?1049l");
+  };
   process.on("exit", restore);
   process.on("SIGINT", () => {
     restore();

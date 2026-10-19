@@ -1,5 +1,6 @@
 import type { Compat } from "../providers/compat.js";
 import type { ChatMessage } from "./messages.js";
+import type { HistoryMeta } from "./history.js";
 
 export type AssistantMeta = { _model?: string; _reasoning?: string };
 
@@ -20,8 +21,8 @@ function withCacheControl(m: ChatMessage): ChatMessage {
 
 export function toWire(messages: ChatMessage[], compat: Compat, model: string): ChatMessage[] {
   const out = messages.map((m): ChatMessage => {
-    if (m.role !== "assistant") return m;
-    const { _model, _reasoning, ...rest } = m as ChatMessage & AssistantMeta;
+    const { _historyId, _isError, _model, _reasoning, ...rest } = m as ChatMessage & AssistantMeta & HistoryMeta;
+    if (m.role !== "assistant") return rest as ChatMessage;
     if (!("tool_calls" in rest) || !rest.tool_calls?.length) return rest as ChatMessage;
 
     const sameModel = _model === undefined || _model === model;

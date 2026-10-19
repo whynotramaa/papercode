@@ -5,3 +5,6 @@ dist/
 
 # Project-local skills are a personal preference, not shared config.
 .papercode/
+
+# Disposable terminal render captures.
+.impeccable/review/

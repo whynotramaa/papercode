@@ -1,0 +1,772 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-19T06:31:20.817958+00:00",
+  "title": "Design System: PaperCode",
+  "extensions": {
+    "colorMeta": {
+      "signal-background": {
+        "role": "neutral",
+        "displayName": "Signal Background",
+        "tonalRamp": [
+          "oklch(15% 0.0052 248.12)",
+          "oklch(26% 0.0052 248.12)",
+          "oklch(38% 0.0052 248.12)",
+          "oklch(49% 0.0052 248.12)",
+          "oklch(61% 0.0052 248.12)",
+          "oklch(72% 0.0052 248.12)",
+          "oklch(84% 0.0052 248.12)",
+          "oklch(95% 0.0052 248.12)"
+        ]
+      },
+      "signal-panel": {
+        "role": "neutral",
+        "displayName": "Signal Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0098 248.26)",
+          "oklch(26% 0.0098 248.26)",
+          "oklch(38% 0.0098 248.26)",
+          "oklch(49% 0.0098 248.26)",
+          "oklch(61% 0.0098 248.26)",
+          "oklch(72% 0.0098 248.26)",
+          "oklch(84% 0.0098 248.26)",
+          "oklch(95% 0.0098 248.26)"
+        ]
+      },
+      "signal-border": {
+        "role": "neutral",
+        "displayName": "Signal Border",
+        "tonalRamp": [
+          "oklch(15% 0.0169 251.80)",
+          "oklch(26% 0.0169 251.80)",
+          "oklch(38% 0.0169 251.80)",
+          "oklch(49% 0.0169 251.80)",
+          "oklch(61% 0.0169 251.80)",
+          "oklch(72% 0.0169 251.80)",
+          "oklch(84% 0.0169 251.80)",
+          "oklch(95% 0.0169 251.80)"
+        ]
+      },
+      "signal-text": {
+        "role": "neutral",
+        "displayName": "Signal Text",
+        "tonalRamp": [
+          "oklch(15% 0.0052 247.88)",
+          "oklch(26% 0.0052 247.88)",
+          "oklch(38% 0.0052 247.88)",
+          "oklch(49% 0.0052 247.88)",
+          "oklch(61% 0.0052 247.88)",
+          "oklch(72% 0.0052 247.88)",
+          "oklch(84% 0.0052 247.88)",
+          "oklch(95% 0.0052 247.88)"
+        ]
+      },
+      "signal-muted": {
+        "role": "neutral",
+        "displayName": "Signal Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0195 250.65)",
+          "oklch(26% 0.0195 250.65)",
+          "oklch(38% 0.0195 250.65)",
+          "oklch(49% 0.0195 250.65)",
+          "oklch(61% 0.0195 250.65)",
+          "oklch(72% 0.0195 250.65)",
+          "oklch(84% 0.0195 250.65)",
+          "oklch(95% 0.0195 250.65)"
+        ]
+      },
+      "signal-faint": {
+        "role": "neutral",
+        "displayName": "Signal Faint",
+        "tonalRamp": [
+          "oklch(15% 0.0228 248.19)",
+          "oklch(26% 0.0228 248.19)",
+          "oklch(38% 0.0228 248.19)",
+          "oklch(49% 0.0228 248.19)",
+          "oklch(61% 0.0228 248.19)",
+          "oklch(72% 0.0228 248.19)",
+          "oklch(84% 0.0228 248.19)",
+          "oklch(95% 0.0228 248.19)"
+        ]
+      },
+      "signal-primary": {
+        "role": "primary",
+        "displayName": "Signal Primary",
+        "tonalRamp": [
+          "oklch(15% 0.1416 99.96)",
+          "oklch(26% 0.1416 99.96)",
+          "oklch(38% 0.1416 99.96)",
+          "oklch(49% 0.1416 99.96)",
+          "oklch(61% 0.1416 99.96)",
+          "oklch(72% 0.1416 99.96)",
+          "oklch(84% 0.1416 99.96)",
+          "oklch(95% 0.1416 99.96)"
+        ]
+      },
+      "signal-accent": {
+        "role": "secondary",
+        "displayName": "Signal Accent",
+        "tonalRamp": [
+          "oklch(15% 0.0539 233.58)",
+          "oklch(26% 0.0539 233.58)",
+          "oklch(38% 0.0539 233.58)",
+          "oklch(49% 0.0539 233.58)",
+          "oklch(61% 0.0539 233.58)",
+          "oklch(72% 0.0539 233.58)",
+          "oklch(84% 0.0539 233.58)",
+          "oklch(95% 0.0539 233.58)"
+        ]
+      },
+      "signal-success": {
+        "role": "neutral",
+        "displayName": "Signal Success",
+        "tonalRamp": [
+          "oklch(15% 0.0924 130.72)",
+          "oklch(26% 0.0924 130.72)",
+          "oklch(38% 0.0924 130.72)",
+          "oklch(49% 0.0924 130.72)",
+          "oklch(61% 0.0924 130.72)",
+          "oklch(72% 0.0924 130.72)",
+          "oklch(84% 0.0924 130.72)",
+          "oklch(95% 0.0924 130.72)"
+        ]
+      },
+      "signal-warning": {
+        "role": "neutral",
+        "displayName": "Signal Warning",
+        "tonalRamp": [
+          "oklch(15% 0.1098 77.19)",
+          "oklch(26% 0.1098 77.19)",
+          "oklch(38% 0.1098 77.19)",
+          "oklch(49% 0.1098 77.19)",
+          "oklch(61% 0.1098 77.19)",
+          "oklch(72% 0.1098 77.19)",
+          "oklch(84% 0.1098 77.19)",
+          "oklch(95% 0.1098 77.19)"
+        ]
+      },
+      "signal-error": {
+        "role": "neutral",
+        "displayName": "Signal Error",
+        "tonalRamp": [
+          "oklch(15% 0.1193 20.27)",
+          "oklch(26% 0.1193 20.27)",
+          "oklch(38% 0.1193 20.27)",
+          "oklch(49% 0.1193 20.27)",
+          "oklch(61% 0.1193 20.27)",
+          "oklch(72% 0.1193 20.27)",
+          "oklch(84% 0.1193 20.27)",
+          "oklch(95% 0.1193 20.27)"
+        ]
+      },
+      "signal-code": {
+        "role": "neutral",
+        "displayName": "Signal Code",
+        "tonalRamp": [
+          "oklch(15% 0.0375 230.30)",
+          "oklch(26% 0.0375 230.30)",
+          "oklch(38% 0.0375 230.30)",
+          "oklch(49% 0.0375 230.30)",
+          "oklch(61% 0.0375 230.30)",
+          "oklch(72% 0.0375 230.30)",
+          "oklch(84% 0.0375 230.30)",
+          "oklch(95% 0.0375 230.30)"
+        ]
+      },
+      "graphite-background": {
+        "role": "neutral",
+        "displayName": "Graphite Background",
+        "tonalRamp": [
+          "oklch(15% 0.0062 271.10)",
+          "oklch(26% 0.0062 271.10)",
+          "oklch(38% 0.0062 271.10)",
+          "oklch(49% 0.0062 271.10)",
+          "oklch(61% 0.0062 271.10)",
+          "oklch(72% 0.0062 271.10)",
+          "oklch(84% 0.0062 271.10)",
+          "oklch(95% 0.0062 271.10)"
+        ]
+      },
+      "graphite-panel": {
+        "role": "neutral",
+        "displayName": "Graphite Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0100 268.27)",
+          "oklch(26% 0.0100 268.27)",
+          "oklch(38% 0.0100 268.27)",
+          "oklch(49% 0.0100 268.27)",
+          "oklch(61% 0.0100 268.27)",
+          "oklch(72% 0.0100 268.27)",
+          "oklch(84% 0.0100 268.27)",
+          "oklch(95% 0.0100 268.27)"
+        ]
+      },
+      "graphite-border": {
+        "role": "neutral",
+        "displayName": "Graphite Border",
+        "tonalRamp": [
+          "oklch(15% 0.0147 264.38)",
+          "oklch(26% 0.0147 264.38)",
+          "oklch(38% 0.0147 264.38)",
+          "oklch(49% 0.0147 264.38)",
+          "oklch(61% 0.0147 264.38)",
+          "oklch(72% 0.0147 264.38)",
+          "oklch(84% 0.0147 264.38)",
+          "oklch(95% 0.0147 264.38)"
+        ]
+      },
+      "graphite-text": {
+        "role": "neutral",
+        "displayName": "Graphite Text",
+        "tonalRamp": [
+          "oklch(15% 0.0062 75.41)",
+          "oklch(26% 0.0062 75.41)",
+          "oklch(38% 0.0062 75.41)",
+          "oklch(49% 0.0062 75.41)",
+          "oklch(61% 0.0062 75.41)",
+          "oklch(72% 0.0062 75.41)",
+          "oklch(84% 0.0062 75.41)",
+          "oklch(95% 0.0062 75.41)"
+        ]
+      },
+      "graphite-muted": {
+        "role": "neutral",
+        "displayName": "Graphite Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0110 67.66)",
+          "oklch(26% 0.0110 67.66)",
+          "oklch(38% 0.0110 67.66)",
+          "oklch(49% 0.0110 67.66)",
+          "oklch(61% 0.0110 67.66)",
+          "oklch(72% 0.0110 67.66)",
+          "oklch(84% 0.0110 67.66)",
+          "oklch(95% 0.0110 67.66)"
+        ]
+      },
+      "graphite-faint": {
+        "role": "neutral",
+        "displayName": "Graphite Faint",
+        "tonalRamp": [
+          "oklch(15% 0.0095 67.66)",
+          "oklch(26% 0.0095 67.66)",
+          "oklch(38% 0.0095 67.66)",
+          "oklch(49% 0.0095 67.66)",
+          "oklch(61% 0.0095 67.66)",
+          "oklch(72% 0.0095 67.66)",
+          "oklch(84% 0.0095 67.66)",
+          "oklch(95% 0.0095 67.66)"
+        ]
+      },
+      "graphite-primary": {
+        "role": "primary",
+        "displayName": "Graphite Primary",
+        "tonalRamp": [
+          "oklch(15% 0.1180 54.15)",
+          "oklch(26% 0.1180 54.15)",
+          "oklch(38% 0.1180 54.15)",
+          "oklch(49% 0.1180 54.15)",
+          "oklch(61% 0.1180 54.15)",
+          "oklch(72% 0.1180 54.15)",
+          "oklch(84% 0.1180 54.15)",
+          "oklch(95% 0.1180 54.15)"
+        ]
+      },
+      "graphite-accent": {
+        "role": "secondary",
+        "displayName": "Graphite Accent",
+        "tonalRamp": [
+          "oklch(15% 0.0595 237.65)",
+          "oklch(26% 0.0595 237.65)",
+          "oklch(38% 0.0595 237.65)",
+          "oklch(49% 0.0595 237.65)",
+          "oklch(61% 0.0595 237.65)",
+          "oklch(72% 0.0595 237.65)",
+          "oklch(84% 0.0595 237.65)",
+          "oklch(95% 0.0595 237.65)"
+        ]
+      },
+      "graphite-success": {
+        "role": "neutral",
+        "displayName": "Graphite Success",
+        "tonalRamp": [
+          "oklch(15% 0.0806 129.99)",
+          "oklch(26% 0.0806 129.99)",
+          "oklch(38% 0.0806 129.99)",
+          "oklch(49% 0.0806 129.99)",
+          "oklch(61% 0.0806 129.99)",
+          "oklch(72% 0.0806 129.99)",
+          "oklch(84% 0.0806 129.99)",
+          "oklch(95% 0.0806 129.99)"
+        ]
+      },
+      "graphite-warning": {
+        "role": "neutral",
+        "displayName": "Graphite Warning",
+        "tonalRamp": [
+          "oklch(15% 0.1025 86.15)",
+          "oklch(26% 0.1025 86.15)",
+          "oklch(38% 0.1025 86.15)",
+          "oklch(49% 0.1025 86.15)",
+          "oklch(61% 0.1025 86.15)",
+          "oklch(72% 0.1025 86.15)",
+          "oklch(84% 0.1025 86.15)",
+          "oklch(95% 0.1025 86.15)"
+        ]
+      },
+      "graphite-error": {
+        "role": "neutral",
+        "displayName": "Graphite Error",
+        "tonalRamp": [
+          "oklch(15% 0.1078 21.28)",
+          "oklch(26% 0.1078 21.28)",
+          "oklch(38% 0.1078 21.28)",
+          "oklch(49% 0.1078 21.28)",
+          "oklch(61% 0.1078 21.28)",
+          "oklch(72% 0.1078 21.28)",
+          "oklch(84% 0.1078 21.28)",
+          "oklch(95% 0.1078 21.28)"
+        ]
+      },
+      "graphite-code": {
+        "role": "neutral",
+        "displayName": "Graphite Code",
+        "tonalRamp": [
+          "oklch(15% 0.0430 231.79)",
+          "oklch(26% 0.0430 231.79)",
+          "oklch(38% 0.0430 231.79)",
+          "oklch(49% 0.0430 231.79)",
+          "oklch(61% 0.0430 231.79)",
+          "oklch(72% 0.0430 231.79)",
+          "oklch(84% 0.0430 231.79)",
+          "oklch(95% 0.0430 231.79)"
+        ]
+      },
+      "midnight-background": {
+        "role": "neutral",
+        "displayName": "Midnight Background",
+        "tonalRamp": [
+          "oklch(15% 0.0234 246.44)",
+          "oklch(26% 0.0234 246.44)",
+          "oklch(38% 0.0234 246.44)",
+          "oklch(49% 0.0234 246.44)",
+          "oklch(61% 0.0234 246.44)",
+          "oklch(72% 0.0234 246.44)",
+          "oklch(84% 0.0234 246.44)",
+          "oklch(95% 0.0234 246.44)"
+        ]
+      },
+      "midnight-panel": {
+        "role": "neutral",
+        "displayName": "Midnight Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0285 242.92)",
+          "oklch(26% 0.0285 242.92)",
+          "oklch(38% 0.0285 242.92)",
+          "oklch(49% 0.0285 242.92)",
+          "oklch(61% 0.0285 242.92)",
+          "oklch(72% 0.0285 242.92)",
+          "oklch(84% 0.0285 242.92)",
+          "oklch(95% 0.0285 242.92)"
+        ]
+      },
+      "midnight-border": {
+        "role": "neutral",
+        "displayName": "Midnight Border",
+        "tonalRamp": [
+          "oklch(15% 0.0361 233.73)",
+          "oklch(26% 0.0361 233.73)",
+          "oklch(38% 0.0361 233.73)",
+          "oklch(49% 0.0361 233.73)",
+          "oklch(61% 0.0361 233.73)",
+          "oklch(72% 0.0361 233.73)",
+          "oklch(84% 0.0361 233.73)",
+          "oklch(95% 0.0361 233.73)"
+        ]
+      },
+      "midnight-text": {
+        "role": "neutral",
+        "displayName": "Midnight Text",
+        "tonalRamp": [
+          "oklch(15% 0.0127 228.93)",
+          "oklch(26% 0.0127 228.93)",
+          "oklch(38% 0.0127 228.93)",
+          "oklch(49% 0.0127 228.93)",
+          "oklch(61% 0.0127 228.93)",
+          "oklch(72% 0.0127 228.93)",
+          "oklch(84% 0.0127 228.93)",
+          "oklch(95% 0.0127 228.93)"
+        ]
+      },
+      "midnight-muted": {
+        "role": "neutral",
+        "displayName": "Midnight Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0315 232.58)",
+          "oklch(26% 0.0315 232.58)",
+          "oklch(38% 0.0315 232.58)",
+          "oklch(49% 0.0315 232.58)",
+          "oklch(61% 0.0315 232.58)",
+          "oklch(72% 0.0315 232.58)",
+          "oklch(84% 0.0315 232.58)",
+          "oklch(95% 0.0315 232.58)"
+        ]
+      },
+      "midnight-faint": {
+        "role": "neutral",
+        "displayName": "Midnight Faint",
+        "tonalRamp": [
+          "oklch(15% 0.0358 231.51)",
+          "oklch(26% 0.0358 231.51)",
+          "oklch(38% 0.0358 231.51)",
+          "oklch(49% 0.0358 231.51)",
+          "oklch(61% 0.0358 231.51)",
+          "oklch(72% 0.0358 231.51)",
+          "oklch(84% 0.0358 231.51)",
+          "oklch(95% 0.0358 231.51)"
+        ]
+      },
+      "midnight-primary": {
+        "role": "primary",
+        "displayName": "Midnight Primary",
+        "tonalRamp": [
+          "oklch(15% 0.1055 203.73)",
+          "oklch(26% 0.1055 203.73)",
+          "oklch(38% 0.1055 203.73)",
+          "oklch(49% 0.1055 203.73)",
+          "oklch(61% 0.1055 203.73)",
+          "oklch(72% 0.1055 203.73)",
+          "oklch(84% 0.1055 203.73)",
+          "oklch(95% 0.1055 203.73)"
+        ]
+      },
+      "midnight-accent": {
+        "role": "secondary",
+        "displayName": "Midnight Accent",
+        "tonalRamp": [
+          "oklch(15% 0.1175 123.29)",
+          "oklch(26% 0.1175 123.29)",
+          "oklch(38% 0.1175 123.29)",
+          "oklch(49% 0.1175 123.29)",
+          "oklch(61% 0.1175 123.29)",
+          "oklch(72% 0.1175 123.29)",
+          "oklch(84% 0.1175 123.29)",
+          "oklch(95% 0.1175 123.29)"
+        ]
+      },
+      "midnight-success": {
+        "role": "neutral",
+        "displayName": "Midnight Success",
+        "tonalRamp": [
+          "oklch(15% 0.1175 123.29)",
+          "oklch(26% 0.1175 123.29)",
+          "oklch(38% 0.1175 123.29)",
+          "oklch(49% 0.1175 123.29)",
+          "oklch(61% 0.1175 123.29)",
+          "oklch(72% 0.1175 123.29)",
+          "oklch(84% 0.1175 123.29)",
+          "oklch(95% 0.1175 123.29)"
+        ]
+      },
+      "midnight-warning": {
+        "role": "neutral",
+        "displayName": "Midnight Warning",
+        "tonalRamp": [
+          "oklch(15% 0.0951 78.36)",
+          "oklch(26% 0.0951 78.36)",
+          "oklch(38% 0.0951 78.36)",
+          "oklch(49% 0.0951 78.36)",
+          "oklch(61% 0.0951 78.36)",
+          "oklch(72% 0.0951 78.36)",
+          "oklch(84% 0.0951 78.36)",
+          "oklch(95% 0.0951 78.36)"
+        ]
+      },
+      "midnight-error": {
+        "role": "neutral",
+        "displayName": "Midnight Error",
+        "tonalRamp": [
+          "oklch(15% 0.1099 12.12)",
+          "oklch(26% 0.1099 12.12)",
+          "oklch(38% 0.1099 12.12)",
+          "oklch(49% 0.1099 12.12)",
+          "oklch(61% 0.1099 12.12)",
+          "oklch(72% 0.1099 12.12)",
+          "oklch(84% 0.1099 12.12)",
+          "oklch(95% 0.1099 12.12)"
+        ]
+      },
+      "midnight-code": {
+        "role": "neutral",
+        "displayName": "Midnight Code",
+        "tonalRamp": [
+          "oklch(15% 0.0569 220.74)",
+          "oklch(26% 0.0569 220.74)",
+          "oklch(38% 0.0569 220.74)",
+          "oklch(49% 0.0569 220.74)",
+          "oklch(61% 0.0569 220.74)",
+          "oklch(72% 0.0569 220.74)",
+          "oklch(84% 0.0569 220.74)",
+          "oklch(95% 0.0569 220.74)"
+        ]
+      },
+      "paper-background": {
+        "role": "neutral",
+        "displayName": "Paper Background",
+        "tonalRamp": [
+          "oklch(15% 0.0111 89.72)",
+          "oklch(26% 0.0111 89.72)",
+          "oklch(38% 0.0111 89.72)",
+          "oklch(49% 0.0111 89.72)",
+          "oklch(61% 0.0111 89.72)",
+          "oklch(72% 0.0111 89.72)",
+          "oklch(84% 0.0111 89.72)",
+          "oklch(95% 0.0111 89.72)"
+        ]
+      },
+      "paper-panel": {
+        "role": "neutral",
+        "displayName": "Paper Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0145 84.58)",
+          "oklch(26% 0.0145 84.58)",
+          "oklch(38% 0.0145 84.58)",
+          "oklch(49% 0.0145 84.58)",
+          "oklch(61% 0.0145 84.58)",
+          "oklch(72% 0.0145 84.58)",
+          "oklch(84% 0.0145 84.58)",
+          "oklch(95% 0.0145 84.58)"
+        ]
+      },
+      "paper-border": {
+        "role": "neutral",
+        "displayName": "Paper Border",
+        "tonalRamp": [
+          "oklch(15% 0.0212 84.59)",
+          "oklch(26% 0.0212 84.59)",
+          "oklch(38% 0.0212 84.59)",
+          "oklch(49% 0.0212 84.59)",
+          "oklch(61% 0.0212 84.59)",
+          "oklch(72% 0.0212 84.59)",
+          "oklch(84% 0.0212 84.59)",
+          "oklch(95% 0.0212 84.59)"
+        ]
+      },
+      "paper-text": {
+        "role": "neutral",
+        "displayName": "Paper Text",
+        "tonalRamp": [
+          "oklch(15% 0.0090 234.03)",
+          "oklch(26% 0.0090 234.03)",
+          "oklch(38% 0.0090 234.03)",
+          "oklch(49% 0.0090 234.03)",
+          "oklch(61% 0.0090 234.03)",
+          "oklch(72% 0.0090 234.03)",
+          "oklch(84% 0.0090 234.03)",
+          "oklch(95% 0.0090 234.03)"
+        ]
+      },
+      "paper-muted": {
+        "role": "neutral",
+        "displayName": "Paper Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0079 115.88)",
+          "oklch(26% 0.0079 115.88)",
+          "oklch(38% 0.0079 115.88)",
+          "oklch(49% 0.0079 115.88)",
+          "oklch(61% 0.0079 115.88)",
+          "oklch(72% 0.0079 115.88)",
+          "oklch(84% 0.0079 115.88)",
+          "oklch(95% 0.0079 115.88)"
+        ]
+      },
+      "paper-faint": {
+        "role": "neutral",
+        "displayName": "Paper Faint",
+        "tonalRamp": [
+          "oklch(15% 0.0123 101.00)",
+          "oklch(26% 0.0123 101.00)",
+          "oklch(38% 0.0123 101.00)",
+          "oklch(49% 0.0123 101.00)",
+          "oklch(61% 0.0123 101.00)",
+          "oklch(72% 0.0123 101.00)",
+          "oklch(84% 0.0123 101.00)",
+          "oklch(95% 0.0123 101.00)"
+        ]
+      },
+      "paper-primary": {
+        "role": "primary",
+        "displayName": "Paper Primary",
+        "tonalRamp": [
+          "oklch(15% 0.1124 41.74)",
+          "oklch(26% 0.1124 41.74)",
+          "oklch(38% 0.1124 41.74)",
+          "oklch(49% 0.1124 41.74)",
+          "oklch(61% 0.1124 41.74)",
+          "oklch(72% 0.1124 41.74)",
+          "oklch(84% 0.1124 41.74)",
+          "oklch(95% 0.1124 41.74)"
+        ]
+      },
+      "paper-accent": {
+        "role": "secondary",
+        "displayName": "Paper Accent",
+        "tonalRamp": [
+          "oklch(15% 0.0586 229.41)",
+          "oklch(26% 0.0586 229.41)",
+          "oklch(38% 0.0586 229.41)",
+          "oklch(49% 0.0586 229.41)",
+          "oklch(61% 0.0586 229.41)",
+          "oklch(72% 0.0586 229.41)",
+          "oklch(84% 0.0586 229.41)",
+          "oklch(95% 0.0586 229.41)"
+        ]
+      },
+      "paper-success": {
+        "role": "neutral",
+        "displayName": "Paper Success",
+        "tonalRamp": [
+          "oklch(15% 0.0721 138.81)",
+          "oklch(26% 0.0721 138.81)",
+          "oklch(38% 0.0721 138.81)",
+          "oklch(49% 0.0721 138.81)",
+          "oklch(61% 0.0721 138.81)",
+          "oklch(72% 0.0721 138.81)",
+          "oklch(84% 0.0721 138.81)",
+          "oklch(95% 0.0721 138.81)"
+        ]
+      },
+      "paper-warning": {
+        "role": "neutral",
+        "displayName": "Paper Warning",
+        "tonalRamp": [
+          "oklch(15% 0.0949 77.12)",
+          "oklch(26% 0.0949 77.12)",
+          "oklch(38% 0.0949 77.12)",
+          "oklch(49% 0.0949 77.12)",
+          "oklch(61% 0.0949 77.12)",
+          "oklch(72% 0.0949 77.12)",
+          "oklch(84% 0.0949 77.12)",
+          "oklch(95% 0.0949 77.12)"
+        ]
+      },
+      "paper-error": {
+        "role": "neutral",
+        "displayName": "Paper Error",
+        "tonalRamp": [
+          "oklch(15% 0.1359 23.45)",
+          "oklch(26% 0.1359 23.45)",
+          "oklch(38% 0.1359 23.45)",
+          "oklch(49% 0.1359 23.45)",
+          "oklch(61% 0.1359 23.45)",
+          "oklch(72% 0.1359 23.45)",
+          "oklch(84% 0.1359 23.45)",
+          "oklch(95% 0.1359 23.45)"
+        ]
+      },
+      "paper-code": {
+        "role": "neutral",
+        "displayName": "Paper Code",
+        "tonalRamp": [
+          "oklch(15% 0.0586 229.41)",
+          "oklch(26% 0.0586 229.41)",
+          "oklch(38% 0.0586 229.41)",
+          "oklch(49% 0.0586 229.41)",
+          "oklch(61% 0.0586 229.41)",
+          "oklch(72% 0.0586 229.41)",
+          "oklch(84% 0.0586 229.41)",
+          "oklch(95% 0.0586 229.41)"
+        ]
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "wordmark-shine-tick",
+        "value": "45ms",
+        "purpose": "src/ui/components/Banner.tsx advances a four-character shine once per tick, then stops after width + 6 ticks. Disabled by compact mode, PAPERCODE_REDUCED_MOTION=1, TERM=dumb or defined NO_COLOR."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "context-rail",
+        "value": "columns >= 110 && rows >= 26"
+      },
+      {
+        "name": "expanded-wordmark",
+        "value": "columns >= 100 && rows >= 32"
+      },
+      {
+        "name": "compact-editor-and-wordmark",
+        "value": "rows < 22"
+      },
+      {
+        "name": "compact-context-rail",
+        "value": "rows < 34"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Composer",
+      "kind": "input",
+      "description": "Schematic of src/ui/components/Editor.tsx. Inverse caret, mode label and keyboard hints; the terminal runtime owns editing.",
+      "html": "<pre class=\"ds-frame\" tabindex=\"0\" aria-label=\"Build composer preview\">\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 <b class=\"ds-primary\">BUILD</b>                <span class=\"ds-faint\">tab switch mode</span> \u2502\n\u2502                                      \u2502\n\u2502 <span class=\"ds-primary\">\u203a</span> <span class=\"ds-caret\"> </span><span class=\"ds-faint\">Describe a task</span>                  \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n<span class=\"ds-muted\">enter</span> <span class=\"ds-faint\">send</span>   <span class=\"ds-muted\">/</span> <span class=\"ds-faint\">commands</span></pre>",
+      "css": ".ds-frame{font-family:monospace;white-space:pre;background:#101214;color:#eceff2;padding:1ch 2ch;margin:0;overflow:auto}.ds-muted{color:#a0aab5}.ds-faint{color:#808c98}.ds-primary{color:#e8d45b}.ds-accent{color:#96bed5}.ds-frame:focus-visible{outline:1px solid #e8d45b;outline-offset:2px}.ds-caret{background:#eceff2;color:#101214}"
+    },
+    {
+      "name": "Searchable selector",
+      "kind": "nav",
+      "description": "Schematic of src/ui/components/Select.tsx. Pointer and bold label identify the active choice. Preview options are the real themes.",
+      "html": "<pre class=\"ds-frame\" tabindex=\"0\" aria-label=\"Theme selector preview\"><b class=\"ds-primary\">Appearance</b>                    <span class=\"ds-muted\">4</span>\n<span class=\"ds-faint\">/ type to search</span>\n\n<span class=\"ds-primary\">\u276f</span> <b>Signal</b>      <span class=\"ds-faint\">signal yellow</span>\n  <span class=\"ds-muted\">Graphite</span>    <span class=\"ds-faint\">orange / ice blue</span>\n  <span class=\"ds-muted\">Midnight</span>    <span class=\"ds-faint\">cyan / lime</span>\n  <span class=\"ds-muted\">Paper</span>       <span class=\"ds-faint\">ink / rust</span>\n\n<span class=\"ds-muted\">\u2191\u2193</span> <span class=\"ds-faint\">move</span>  <span class=\"ds-muted\">enter</span> <span class=\"ds-faint\">select</span></pre>",
+      "css": ".ds-frame{font-family:monospace;white-space:pre;background:#101214;color:#eceff2;padding:1ch 2ch;margin:0;overflow:auto}.ds-muted{color:#a0aab5}.ds-faint{color:#808c98}.ds-primary{color:#e8d45b}.ds-accent{color:#96bed5}.ds-frame:focus-visible{outline:1px solid #e8d45b;outline-offset:2px}"
+    },
+    {
+      "name": "Context rail",
+      "kind": "custom",
+      "description": "Schematic of src/ui/components/ContextPanel.tsx. Empty state only; session usage and integrations must come from runtime state.",
+      "html": "<pre class=\"ds-frame\" tabindex=\"0\" aria-label=\"Context rail empty-state preview\"><b>Model</b>\n<span class=\"ds-accent\">Not connected</span>\n<span class=\"ds-muted\">Use /connect to start</span>\n\n<b>Changed files</b>\n<span class=\"ds-faint\">No file changes yet</span>\n\n<span class=\"ds-faint\">/models  switch model\n/theme   appearance\nctrl+b   hide context</span></pre>",
+      "css": ".ds-frame{font-family:monospace;white-space:pre;background:#101214;color:#eceff2;padding:1ch 2ch;margin:0;overflow:auto}.ds-muted{color:#a0aab5}.ds-faint{color:#808c98}.ds-primary{color:#e8d45b}.ds-accent{color:#96bed5}.ds-frame:focus-visible{outline:1px solid #e8d45b;outline-offset:2px}.ds-frame{border-left:1px solid #343b43;width:25ch}"
+    },
+    {
+      "name": "Workspace header",
+      "kind": "custom",
+      "description": "Schematic of src/ui/components/Header.tsx with a labeled example workspace name. Working and ready states have text labels.",
+      "html": "<pre class=\"ds-frame\" tabindex=\"0\" aria-label=\"Header preview, example workspace\"><b class=\"ds-primary\">papercode</b> <span class=\"ds-faint\"> / </span> example-workspace   <span class=\"ds-ready\">\u25cf ready</span></pre>",
+      "css": ".ds-frame{font-family:monospace;white-space:pre;background:#101214;color:#eceff2;padding:1ch 2ch;margin:0;overflow:auto}.ds-muted{color:#a0aab5}.ds-faint{color:#808c98}.ds-primary{color:#e8d45b}.ds-accent{color:#96bed5}.ds-frame:focus-visible{outline:1px solid #e8d45b;outline-offset:2px}.ds-frame{border-bottom:1px solid #343b43}.ds-ready{color:#a8c98a}"
+    },
+    {
+      "name": "Shared panel",
+      "kind": "card",
+      "description": "Schematic of src/ui/components/Panel.tsx with an actual selector empty-state message. Two columns of horizontal padding, one row of vertical padding.",
+      "html": "<pre class=\"ds-frame\" tabindex=\"0\" aria-label=\"Panel empty-state preview\"><b class=\"ds-primary\">Sessions</b>\n\n<span class=\"ds-faint\">Nothing here yet.</span></pre>",
+      "css": ".ds-frame{font-family:monospace;white-space:pre;background:#101214;color:#eceff2;padding:1ch 2ch;margin:0;overflow:auto}.ds-muted{color:#a0aab5}.ds-faint{color:#808c98}.ds-primary{color:#e8d45b}.ds-accent{color:#96bed5}.ds-frame:focus-visible{outline:1px solid #e8d45b;outline-offset:2px}.ds-frame{border:1px solid #343b43}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Signal console",
+    "overview": "PaperCode uses a full-screen character-cell workspace with a centered launch composer and a docked composer during conversation. Signal is the default; Graphite, Midnight and Paper retain the same layout and semantic color roles.\n\nThis system follows the implemented React/Ink interface. Terminal settings own the font and cell metrics. The redesign is code-led; there is no approved raster composition.",
+    "keyCharacteristics": [
+      "Character-cell spacing and single-line box borders.",
+      "A stable header, scrollable work area and one status row with width-bounded contextual hints.",
+      "Semantic color, explicit labels and visible selection/caret markers."
+    ],
+    "rules": [
+      {
+        "name": "The active palette rule",
+        "body": "Use theme roles for every frame, including erased line tails. [The CLI](src/cli.tsx) paints the actual background and default foreground, including Paper's light background.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do resolve every color through the active theme.",
+      "Do keep long paths and model IDs within their allotted columns.",
+      "Do preserve keyboard access to editing, approvals, selectors and scrollback.",
+      "Do derive context, changed files and connection status from application state."
+    ],
+    "donts": [
+      "Don't add pixel font sizes, web font stacks or CSS breakpoints to the terminal implementation.",
+      "Don't replace state with fabricated context or integration counts.",
+      "Don't animate theme selection or repeat the opening shine indefinitely.",
+      "Don't rely on color alone for selection, errors or diff meaning."
+    ]
+  }
+}

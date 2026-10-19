@@ -3,39 +3,21 @@
 export const VERSION = "0.1.0";
 
 
-export const WORDMARK = [
-  "█▀█ ▄▀█ █▀█ █▀▀ █▀█ █▀▀ █▀█ █▀▄ █▀▀",
-  "█▀▀ █▀█ █▀▀ ██▄ █▀▄ █▄▄ █▄█ █▄▀ ██▄",
-] as const;
+const LETTERS: Record<string, readonly string[]> = {
+  P: ["████ ", "█   █", "████ ", "█    ", "█    "],
+  A: [" ███ ", "█   █", "█████", "█   █", "█   █"],
+  E: ["█████", "█    ", "████ ", "█    ", "█████"],
+  R: ["████ ", "█   █", "████ ", "█  █ ", "█   █"],
+  C: [" ████", "█    ", "█    ", "█    ", " ████"],
+  O: [" ███ ", "█   █", "█   █", "█   █", " ███ "],
+  D: ["████ ", "█   █", "█   █", "█   █", "████ "],
+};
 
+export const WORDMARK = Array.from({ length: 5 }, (_, row) =>
+  [..."PAPERCODE"].map((letter) => LETTERS[letter]![row]!).join(" "),
+);
 
-export const MARK = "◆";
-
-export const TAGLINE = "any model · your terminal";
-
-
-const PET_EYES = { open: "o.o", blink: "-.-", wink: "o.-" } as const;
-
-export type PetMood = keyof typeof PET_EYES;
-
-export function pet(mood: PetMood = "open"): readonly [string, string] {
-  return [" /\\_/\\ ", `( ${PET_EYES[mood]} )`];
-}
-
-
-export const PET_WIDTH = 7;
-
-
-export const WORKING_VERBS = [
-  "Thinking",
-  "Weaving",
-  "Composing",
-  "Tracing",
-  "Sketching",
-  "Brewing",
-  "Reasoning",
-  "Drafting",
-] as const;
+export const WORKING_VERBS = ["Thinking", "Working", "Reasoning"] as const;
 
 
 export function workingVerb(seed: number): string {

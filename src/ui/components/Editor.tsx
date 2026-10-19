@@ -1,5 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
+import chalk from "chalk";
+import wrapAnsi from "wrap-ansi";
+import { useViewport } from "../useViewport.js";
 import { useTheme } from "../themes/context.js";
 import { useFileSuggestions } from "./useFileSuggestions.js";
 import { filterPalette, type PaletteEntry } from "../commands.js";
@@ -17,6 +20,8 @@ export type EditorProps = {
   onPalette: (entry: PaletteEntry) => void;
   onToggleMode: () => void;
   initialText?: string;
+  width?: number;
+  onSuggestionsChange?: (open: boolean) => void;
 };
 
 const PASTE_LINES = 10;
@@ -46,8 +51,10 @@ export function mentionQuery(text: string, cursor: number): string | null {
 
 const VISIBLE_SUGGESTIONS = 8;
 
-export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleMode, initialText = "" }: EditorProps) {
+export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleMode, initialText = "", width, onSuggestionsChange }: EditorProps) {
   const theme = useTheme();
+  const { columns, rows } = useViewport();
+  const capacity = Math.min(6, Math.max(2, rows - 17));
   const [text, setText] = useState(initialText);
   const [cursor, setCursor] = useState(initialText.length);
   const pastes = useRef(new Map<string, string>());
@@ -66,17 +73,17 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
 
   const suggestions: string[] = pQuery !== null ? paletteEntries.map((e) => e.label) : fileMatches;
   const open = suggestions.length > 0;
+  useEffect(() => { onSuggestionsChange?.(open); }, [open, onSuggestionsChange]);
   const active = Math.min(selected, Math.max(0, suggestions.length - 1));
 
   // Scroll window for the suggestion list, kept centered on the highlight.
   const windowStart =
-    suggestions.length <= VISIBLE_SUGGESTIONS
+    suggestions.length <= capacity
       ? 0
       : Math.max(
           0,
-          Math.min(active - Math.floor(VISIBLE_SUGGESTIONS / 2), suggestions.length - VISIBLE_SUGGESTIONS),
+          Math.min(active - Math.floor(capacity / 2), suggestions.length - capacity),
         );
-  const windowEnd = Math.min(suggestions.length, windowStart + VISIBLE_SUGGESTIONS);
 
   function reset() {
     setText("");
@@ -131,6 +138,7 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
 
   useInput(
     (input, key) => {
+      if (key.pageUp || key.pageDown || (key.ctrl && input === "b")) return;
       // Tab: accept a suggestion when the picker is open, otherwise toggle mode.
       if (key.tab) {
         if (open) acceptSuggestion();
@@ -237,8 +245,14 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
     },
   );
 
-  const lines = text.split("\n");
-  const placeholder = mode === "plan" ? "Ask what would change…" : "Type a command…";
+  const placeholder = mode === "plan" ? "Explore an idea or plan a change..." : "Describe a task. @ to add files, / for commands";
+  const caret = "\x1b[7m";
+  const painted = `${chalk.hex(theme.text)(text.slice(0, cursor))}${caret}${text[cursor] && text[cursor] !== "\n" ? text[cursor] : " "}\x1b[27m${chalk.hex(theme.text)(text.slice(cursor + (text[cursor] && text[cursor] !== "\n" ? 1 : 0)))}`;
+  const wrapped = wrapAnsi(painted, Math.max(8, (width ?? columns) - 6), { hard: true, wordWrap: false, trim: false }).split("\n");
+  const cursorLine = Math.max(0, wrapped.findIndex((line) => line.includes(caret)));
+  const visibleLines = rows < 22 ? 2 : 4;
+  const start = Math.max(0, cursorLine - visibleLines + 1);
+  const lines = wrapped.slice(start, start + visibleLines);
 
   const hints: Hint[] = open
     ? [
@@ -249,72 +263,46 @@ export function Editor({ mode, cwd, skills, busy, onSubmit, onPalette, onToggleM
     : busy
     ? [
         { key: "Enter", action: "queue" },
-        { key: "Esc", action: "interrupt and send queue" },
+        { key: "Esc", action: "interrupt" },
       ]
     : [
         { key: "Enter", action: "send" },
-        { key: "Tab", action: mode === "plan" ? "build mode" : "plan mode" },
         { key: "/", action: "commands" },
-        { key: "@", action: "files" },
         { key: newlineKeyLabel(), action: "newline" },
       ];
 
   return (
-    <Box flexDirection="column">
-      <Box
-        borderStyle="round"
-        borderColor={theme.border}
-        paddingX={1}
-        flexDirection="column"
-      >
-        <Box>
-          <Text color={mode === "plan" ? theme.accent : theme.primary} bold>
-            {"❯ "}
-          </Text>
+    <Box flexDirection="column" flexShrink={0}>
+      <Box borderStyle="single" borderColor={theme.border} borderTopColor={mode === "plan" ? theme.accent : theme.primary} paddingX={1} flexDirection="column">
+        <Box justifyContent="space-between" marginBottom={rows >= 22 ? 1 : 0}>
+          <Text color={mode === "plan" ? theme.accent : theme.primary} bold>{busy ? "QUEUE A MESSAGE" : mode === "plan" ? "PLAN" : "BUILD"}</Text>
+          {(width ?? columns) >= 44 && <Text color={theme.faint}>tab switch mode</Text>}
+        </Box>
+        <Box minHeight={rows >= 22 ? 2 : 1}>
+          <Box width={2} flexShrink={0}><Text color={theme.primary}>{">"}</Text></Box>
           <Box flexDirection="column" flexGrow={1}>
-            {text === "" ? (
-              <Text color={theme.faint}>{placeholder}</Text>
-            ) : (
-              lines.map((line, i) => (
-                <Text key={i} color={theme.text}>
-                  {line || " "}
-                </Text>
-              ))
-            )}
+            {text === "" ? <Text color={theme.faint} wrap="truncate-end"><Text inverse> </Text>{placeholder}</Text> : lines.map((line, i) => <Text key={i}>{line || " "}</Text>)}
           </Box>
         </Box>
+        {wrapped.length > visibleLines && <Text color={theme.faint}>{start + 1}-{Math.min(start + visibleLines, wrapped.length)} of {wrapped.length} lines</Text>}
       </Box>
-
       {open && (
-        <Box flexDirection="column" marginTop={1}>
-          {windowStart > 0 && <Text color={theme.faint}>{`  ↑ ${windowStart} more`}</Text>}
-          {suggestions.slice(windowStart, windowStart + VISIBLE_SUGGESTIONS).map((label, i) => {
+        <Box flexDirection="column" borderStyle="single" borderTop={false} borderColor={theme.border} paddingX={1}>
+          <Text color={theme.faint}>{pQuery !== null ? "Commands" : "Files"}{` · ${active + 1}/${suggestions.length}`}</Text>
+          {suggestions.slice(windowStart, windowStart + capacity).map((label, i) => {
             const real = windowStart + i;
-            const entry: PaletteEntry | undefined = paletteEntries[real];
+            const entry = paletteEntries[real];
             const isActive = real === active;
             return (
-              <Box key={label}>
-                <Text color={isActive ? theme.primary : theme.faint}>{isActive ? "❯ " : "  "}</Text>
-                <Box width={16}>
-                  <Text color={isActive ? theme.text : theme.muted} bold={isActive}>
-                    {label}
-                  </Text>
-                </Box>
-                {entry && (
-                  <Text color={theme.faint}>
-                    {entry.kind === "skill" ? "skill · " : ""}
-                    {entry.description}
-                  </Text>
-                )}
+              <Box key={label} height={1} flexShrink={0}>
+                <Box width={2} flexShrink={0}><Text color={isActive ? theme.primary : theme.faint}>{isActive ? ">" : " "}</Text></Box>
+                <Box width={entry ? Math.min(18, Math.floor((width ?? columns) * 0.4)) : Math.max(8, (width ?? columns) - 6)} marginRight={2} flexShrink={0}><Text color={isActive ? theme.text : theme.muted} bold={isActive} wrap="truncate-end">{label}</Text></Box>
+                {entry && <Box flexGrow={1} minWidth={0}><Text color={theme.faint} wrap="truncate-end">{entry.description}</Text></Box>}
               </Box>
             );
           })}
-          {windowEnd < suggestions.length && (
-            <Text color={theme.faint}>{`  ↓ ${suggestions.length - windowEnd} more`}</Text>
-          )}
         </Box>
       )}
-
       <Hints hints={hints} />
     </Box>
   );

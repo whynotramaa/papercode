@@ -3,6 +3,7 @@ import path from "node:path";
 import { sessionsDir, ensureDir } from "../config/paths.js";
 import { textOf, type ChatMessage } from "../agent/messages.js";
 import { stripReminders } from "../agent/systemPrompt.js";
+import { historyId, type HistoryMeta } from "../agent/history.js";
 
 export type SessionEntry =
   | { type: "message"; id: string; parentId: string | null; ts: number; message: ChatMessage }
@@ -68,6 +69,7 @@ function append(session: Session, entries: SessionEntry[]): void {
 }
 
 function apply(session: Session, e: SessionEntry): void {
+  if (e.type === "message") (e.message as ChatMessage & HistoryMeta)._historyId ??= e.id;
   session.entries.push(e);
   session.updatedAt = Math.max(session.updatedAt, e.ts);
   if (e.type === "message" || e.type === "compaction") session.leaf = e.id;
@@ -84,7 +86,7 @@ function apply(session: Session, e: SessionEntry): void {
 export function appendMessages(session: Session, messages: ChatMessage[], now = Date.now()): void {
   let parent = session.leaf;
   const entries: SessionEntry[] = messages.map((message) => {
-    const id = entryId();
+    const id = historyId(message);
     const entry: SessionEntry = { type: "message", id, parentId: parent, ts: now, message };
     parent = id;
     return entry;
@@ -93,7 +95,8 @@ export function appendMessages(session: Session, messages: ChatMessage[], now = 
 }
 
 export function appendCompaction(session: Session, messages: ChatMessage[], summarized: number): void {
-  append(session, [{ type: "compaction", id: entryId(), parentId: session.leaf, ts: Date.now(), messages, summarized }]);
+  for (const message of messages) historyId(message);
+  append(session, [{ type: "compaction", id: entryId(), parentId: session.leaf, ts: Date.now(), messages: structuredClone(messages), summarized }]);
 }
 
 export function appendInfo(session: Session, provider?: string, model?: string): void {

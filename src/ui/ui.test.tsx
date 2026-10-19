@@ -26,14 +26,14 @@ const KEY = {
   ctrlD: "\x04",
 };
 
-function wrap(node: React.ReactNode, theme: ThemeName = "carbon") {
+function wrap(node: React.ReactNode, theme: ThemeName = "signal") {
   return render(<ThemeProvider name={theme}>{node}</ThemeProvider>);
 }
 
 const tick = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 
 
-async function press(node: React.ReactNode, keys: string[], theme: ThemeName = "carbon") {
+async function press(node: React.ReactNode, keys: string[], theme: ThemeName = "signal") {
   const app = wrap(node, theme);
   await tick();
   for (const key of keys) {
@@ -125,18 +125,18 @@ describe("commands", () => {
 
   it("lists every command for a bare slash", () => {
     const entries = filterPalette("", []);
-    expect(entries.filter((e) => e.kind === "command")).toHaveLength(14);
+    expect(entries.filter((e) => e.kind === "command")).toHaveLength(15);
   });
 });
 
 describe("markdown", () => {
   it("renders headings and code without throwing", () => {
-    const out = renderMarkdown("# Title\n\n`code`\n", THEMES.carbon);
+    const out = renderMarkdown("# Title\n\n`code`\n", THEMES.signal);
     expect(plain(out)).toContain("Title");
   });
 
   it("falls back to raw text on malformed input rather than crashing", () => {
-    const out = renderMarkdown("```unclosed\nstuff", THEMES.carbon);
+    const out = renderMarkdown("```unclosed\nstuff", THEMES.signal);
     expect(out).toBeTruthy();
   });
 
@@ -163,7 +163,7 @@ describe("Select", () => {
     expect(out).toContain("Pick");
     expect(out).toContain("Alpha");
     expect(out).toContain("Beta");
-    expect(out).toContain("❯");
+    expect(out).toContain("> Alpha");
   });
 
   it("renders an empty list without crashing", () => {
@@ -330,11 +330,11 @@ describe("tildify", () => {
 
 describe("meter", () => {
   it("fills proportionally and clamps", () => {
-    expect(meter(0, 5)).toBe("▱▱▱▱▱");
-    expect(meter(1, 5)).toBe("▰▰▰▰▰");
-    expect(meter(0.4, 5)).toBe("▰▰▱▱▱");
-    expect(meter(5, 5)).toBe("▰▰▰▰▰");
-    expect(meter(-1, 5)).toBe("▱▱▱▱▱");
+    expect(meter(0, 5)).toBe("─────");
+    expect(meter(1, 5)).toBe("━━━━━");
+    expect(meter(0.4, 5)).toBe("━━───");
+    expect(meter(5, 5)).toBe("━━━━━");
+    expect(meter(-1, 5)).toBe("─────");
   });
 });
 
@@ -353,12 +353,12 @@ describe("Editor", () => {
 
   it("shows a placeholder when empty", () => {
     const { lastFrame } = wrap(<Editor {...base} />);
-    expect(plain(lastFrame() ?? "")).toContain("Type a command");
+    expect(plain(lastFrame() ?? "")).toContain("Describe a task");
   });
 
   it("shows the plan-mode placeholder in plan mode", () => {
     const { lastFrame } = wrap(<Editor {...base} mode="plan" />);
-    expect(plain(lastFrame() ?? "")).toContain("Ask what would change");
+    expect(plain(lastFrame() ?? "")).toContain("Explore an idea");
   });
 
   it("echoes typed text and submits on enter", async () => {
@@ -640,7 +640,7 @@ describe("Editor input clearing", () => {
     await tick();
     const after = plain(app.lastFrame() ?? "");
     expect(after).not.toContain("hello world");
-    expect(after).toContain("Type a command");
+    expect(after).toContain("Describe a task");
   });
 
   it("clears the field on escape", async () => {

@@ -91,7 +91,7 @@ describe("App", () => {
 
     const { lastFrame } = await mount();
     const out = plain(lastFrame() ?? "");
-    expect(out).toContain("Type a command");
+    expect(out).toContain("Describe a task");
     expect(out).toContain("BUILD");
     expect(out).toContain("m1");
   });
@@ -109,7 +109,7 @@ describe("App", () => {
     const { lastFrame } = await mount();
     // Nord's primary is #88c0d0; its presence proves the saved theme was applied
     // rather than the default.
-    expect(lastFrame()).toContain("136;192;208");
+    expect(lastFrame()).toContain("101;217;228");
   });
 
   it("falls back to the default theme when settings.json is corrupt", async () => {
@@ -135,13 +135,7 @@ describe("App", () => {
   });
 
   it("renders the transcript when resuming a second, shorter session", async () => {
-    // Ink's <Static> is append-only: it remembers how many items it has emitted
-    // and renders only items.slice(thatCount). Resuming replaces the entry list
-    // wholesale, so without a remount the shorter second session renders
-    // nothing and the FIRST session's transcript stays on screen under the new
-    // session's name. Asserting on the final frame is what makes this bite —
-    // the second session's title also appears in the picker, so searching all
-    // frames for the marker passes even when the transcript never renders.
+    // Assert the final conversation, not a title that also appeared in the picker.
     configure();
     seedSession("aaa", ["FIRST-MARK"], 2);
     seedSession("bbb", ["SECOND-MARK"], 1);

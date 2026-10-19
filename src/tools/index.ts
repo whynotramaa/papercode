@@ -8,11 +8,12 @@ import { globTool } from "./glob.js";
 import { grepTool } from "./grep.js";
 import { bashTool } from "./bash.js";
 import { skillTool } from "./skill.js";
+import { historyTool } from "./history.js";
 import { runHooks } from "./hooks.js";
 import { checkMode, type Mode } from "./permissions.js";
 import type { AnyTool, Tool, ToolContext, ToolResult } from "./types.js";
 
-export const ALL_TOOLS: AnyTool[] = [readTool, lsTool, globTool, grepTool, editTool, writeTool, bashTool, skillTool];
+export const ALL_TOOLS: AnyTool[] = [readTool, lsTool, globTool, grepTool, editTool, writeTool, bashTool, skillTool, historyTool];
 
 export function registerTools(tools: AnyTool[]): void {
   for (const tool of tools) if (!getTool(tool.name)) ALL_TOOLS.push(tool);
